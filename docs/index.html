@@ -1,0 +1,1120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One Claude Code, Many Hats — Personas for Claude Code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#faf7f2;
+    --paper-deep:#f3eee5;
+    --ink:#1c1917;
+    --ink-soft:#57534e;
+    --ink-faint:#a8a29e;
+    --line:#e7e0d4;
+    --accent:#c2410c;
+    --accent-soft:#fff1e7;
+    --accent-deep:#7c2d12;
+    --green:#3f6212;
+    --green-soft:#f0f7e4;
+    --code-bg:#1c1917;
+    --code-ink:#e7e5e4;
+    --code-comment:#78716c;
+    --code-accent:#fdba74;
+    --code-green:#bef264;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --sans:"Inter", -apple-system, "Segoe UI", sans-serif;
+    --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:16px; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--accent); color:#fff}
+
+  /* ── hero ─────────────────────────────────────────── */
+  .hero{
+    position:relative; overflow:hidden;
+    padding:9rem 2rem 7rem;
+    background:
+      radial-gradient(60rem 30rem at 85% -10%, rgba(194,65,12,.10), transparent 60%),
+      radial-gradient(45rem 26rem at -10% 110%, rgba(63,98,18,.07), transparent 60%),
+      var(--paper);
+    border-bottom:1px solid var(--line);
+  }
+  .hero-inner{max-width:68rem; margin:0 auto}
+  .eyebrow{
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.28em;
+    text-transform:uppercase; color:var(--accent);
+  }
+  h1{
+    font-family:var(--serif); font-weight:600;
+    font-size:clamp(2.9rem, 7.5vw, 5.6rem);
+    line-height:1.08; letter-spacing:-.02em;
+    margin:1rem 0 1.4rem; max-width:18ch;
+    padding:.1em .14em .1em 0; /* serif ink overhang: vertical ascenders/descenders + italic right edge */
+  }
+  h1 em{font-style:italic; font-weight:300; color:var(--accent)}
+  .hero p.lede{
+    font-size:clamp(1.05rem, 2vw, 1.25rem); color:var(--ink-soft);
+    max-width:46ch; margin:0 0 2.4rem;
+  }
+  .hero .chips{display:flex; flex-wrap:wrap; gap:.55rem}
+  .chip{
+    font-family:var(--mono); font-size:.72rem; padding:.42rem .85rem;
+    border:1px solid var(--line); border-radius:999px; background:#fffdf9;
+    color:var(--ink-soft); text-decoration:none;
+  }
+  .chip.hot{border-color:var(--accent); color:var(--accent-deep); background:var(--accent-soft)}
+  .chip.hot:hover{background:var(--accent); color:#fff}
+
+  /* ── table of contents ────────────────────────────── */
+  .toc{border-bottom:1px solid var(--line); padding:2.4rem 2rem; background:var(--paper)}
+  .toc-inner{max-width:68rem; margin:0 auto}
+  .toc .toc-label{
+    font-family:var(--mono); font-size:.68rem; letter-spacing:.24em;
+    text-transform:uppercase; color:var(--ink-faint); margin-bottom:1.1rem;
+  }
+  .toc-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(18rem,1fr)); gap:.15rem 2.4rem}
+  .toc a{
+    display:flex; gap:.75rem; align-items:baseline; text-decoration:none;
+    color:var(--ink-soft); padding:.4rem .5rem; border-radius:.45rem; font-size:.9rem;
+  }
+  .toc a:hover{background:var(--accent-soft); color:var(--accent-deep)}
+  .toc .tno{font-family:var(--mono); font-size:.64rem; color:var(--accent); flex:none}
+  .toc .tk{font-family:var(--serif); font-style:italic; font-weight:300; color:var(--ink-faint); flex:none}
+  .toc a:hover .tk{color:var(--accent)}
+  section[id]{scroll-margin-top:1.5rem}
+
+  /* ── doctrine cards ───────────────────────────────── */
+  .band{padding:5.5rem 2rem}
+  .band.deep{background:var(--paper-deep); border-block:1px solid var(--line)}
+  .inner{max-width:68rem; margin:0 auto}
+  .kicker{
+    display:flex; align-items:baseline; gap:1rem; margin-bottom:2.6rem;
+  }
+  .kicker .no{
+    font-family:var(--serif); font-style:italic; font-weight:300;
+    font-size:1.05rem; color:var(--accent); white-space:nowrap;
+  }
+  .kicker h2{
+    font-family:var(--serif); font-weight:600; letter-spacing:-.015em;
+    font-size:clamp(1.7rem, 3.4vw, 2.5rem); line-height:1.22; margin:0;
+    padding-right:.08em; /* italic glyph overhang */
+  }
+  .prose{max-width:62ch; color:var(--ink-soft)}
+  .prose strong{color:var(--ink)}
+  .prose code, td code, li code, .gotcha code{
+    font-family:var(--mono); font-size:.83em; background:#efe9dd;
+    padding:.1em .38em; border-radius:.3em; color:var(--ink);
+  }
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(15.5rem,1fr)); gap:1.1rem; margin-top:2.6rem}
+  .card{
+    background:#fffdf9; border:1px solid var(--line); border-radius:1rem;
+    padding:1.6rem 1.5rem 1.5rem; position:relative;
+  }
+  .card .glyph{
+    font-family:var(--serif); font-style:italic; font-weight:300;
+    font-size:2.1rem; color:var(--accent); line-height:1.2;
+  }
+  .card h3{font-family:var(--serif); font-weight:600; font-size:1.22rem; margin:.9rem 0 .5rem; letter-spacing:-.01em}
+  .card p{margin:0; font-size:.92rem; color:var(--ink-soft)}
+
+  /* ── steps ────────────────────────────────────────── */
+  .step{
+    display:grid; grid-template-columns:minmax(0,26rem) minmax(0,1fr);
+    gap:2.6rem; padding:3.6rem 0; border-top:1px solid var(--line);
+    align-items:start;
+  }
+  .step:first-of-type{border-top:none; padding-top:1rem}
+  .step .num{
+    font-family:var(--serif); font-weight:300; font-style:italic;
+    font-size:3.2rem; line-height:1.2; color:var(--accent);
+  }
+  .step h3{
+    font-family:var(--serif); font-weight:600; font-size:1.55rem;
+    letter-spacing:-.015em; margin:.7rem 0 .8rem;
+  }
+  .step .txt p{margin:.5rem 0; font-size:.95rem; color:var(--ink-soft)}
+  .step .txt p strong{color:var(--ink)}
+  .note{
+    margin-top:1.1rem; padding:.85rem 1rem; border-left:3px solid var(--accent);
+    background:var(--accent-soft); border-radius:.4rem;
+    font-size:.86rem; color:var(--accent-deep);
+  }
+  .note.ok{border-color:var(--green); background:var(--green-soft); color:var(--green)}
+
+  /* ── code ─────────────────────────────────────────── */
+  .codewrap{position:relative; min-width:0}
+  pre{
+    margin:0; background:var(--code-bg); color:var(--code-ink);
+    border-radius:.9rem; padding:1.25rem 1.4rem; overflow-x:auto;
+    font-family:var(--mono); font-size:.8rem; line-height:1.72;
+    box-shadow:0 14px 34px -18px rgba(28,25,23,.5);
+  }
+  pre .path{display:block; color:var(--code-accent); margin-bottom:.7rem; font-size:.72rem; letter-spacing:.06em}
+  pre .c{color:var(--code-comment)}
+  pre .g{color:var(--code-green)}
+  pre .a{color:var(--code-accent)}
+  .copy{
+    position:absolute; top:.7rem; right:.7rem; border:1px solid #44403c;
+    background:transparent; color:#a8a29e; font-family:var(--mono);
+    font-size:.66rem; letter-spacing:.08em; padding:.3rem .65rem;
+    border-radius:.45rem; cursor:pointer;
+  }
+  .copy:hover{color:#fff; border-color:#78716c}
+
+  /* ── table ────────────────────────────────────────── */
+  .tablewrap{overflow-x:auto; margin-top:2.4rem; border:1px solid var(--line); border-radius:1rem; background:#fffdf9}
+  table{border-collapse:collapse; width:100%; font-size:.9rem}
+  th,td{padding:.9rem 1.2rem; text-align:left; vertical-align:top; border-top:1px solid var(--line)}
+  thead th{
+    border-top:none; font-family:var(--mono); font-size:.68rem;
+    letter-spacing:.18em; text-transform:uppercase; color:var(--ink-faint);
+  }
+  td.rank{font-family:var(--serif); font-style:italic; font-weight:300; color:var(--ink-faint); white-space:nowrap}
+  tr.star{background:var(--accent-soft)}
+  tr.star td{border-top-color:#f3cdb3}
+  tr.star td:first-child{position:relative}
+  tr.star td:first-child::before{content:"★"; color:var(--accent); margin-right:.45rem}
+
+  /* ── gotchas ──────────────────────────────────────── */
+  .gotchas{display:grid; grid-template-columns:repeat(auto-fit,minmax(18rem,1fr)); gap:1.1rem; margin-top:2.6rem}
+  .gotcha{
+    border:1px solid var(--line); border-radius:1rem; background:#fffdf9;
+    padding:1.4rem 1.4rem 1.3rem;
+  }
+  .gotcha .tag{
+    display:inline-block; font-family:var(--mono); font-size:.62rem;
+    letter-spacing:.16em; text-transform:uppercase; padding:.22rem .6rem;
+    border-radius:999px; margin-bottom:.85rem;
+  }
+  .tag.trap{background:#fdecea; color:#9f1239; border:1px solid #f2b8bd}
+  .tag.manual{background:#fef3c7; color:#92400e; border:1px solid #f0d48a}
+  .tag.untested{background:#feecdc; color:#9a3412; border:1px solid #f7c398}
+  .gotcha h4{font-family:var(--serif); font-weight:600; font-size:1.08rem; margin:0 0 .45rem; letter-spacing:-.01em}
+  .gotcha p{margin:0; font-size:.88rem; color:var(--ink-soft)}
+
+  /* ── everyday recipes ─────────────────────────────── */
+  .recipes{display:grid; grid-template-columns:repeat(auto-fit,minmax(19rem,1fr)); gap:1.1rem; margin-top:2.6rem}
+  .recipe{border:1px solid var(--line); border-radius:1rem; background:#fffdf9; padding:1.5rem}
+  .recipe h4{font-family:var(--serif); font-weight:600; font-size:1.12rem; margin:0 0 .55rem}
+  .recipe p{font-size:.88rem; color:var(--ink-soft); margin:0 0 .9rem}
+  .recipe pre{font-size:.72rem; padding:.9rem 1rem; box-shadow:none}
+
+  /* ── pipeline diagram ─────────────────────────────── */
+  .pipe{display:grid; grid-template-columns:repeat(5,1fr); gap:0; margin-top:2.8rem; counter-reset:pnode}
+  .pnode{position:relative; padding:0 1.6rem 0 0}
+  .pnode + .pnode{padding-left:1.6rem}
+  .pnode::after{
+    content:"→"; position:absolute; right:.28rem; top:2.4rem;
+    font-family:var(--serif); font-style:italic; font-size:1.5rem; color:var(--accent);
+  }
+  .pnode:last-child::after{content:none}
+  .pnode .pdot{
+    counter-increment:pnode;
+    width:2.9rem; height:2.9rem; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--ink); color:var(--paper);
+    font-family:var(--serif); font-style:italic; font-size:1.05rem;
+    margin-bottom:1.1rem;
+  }
+  .pnode .pdot::before{content:counter(pnode)}
+  .pnode.hot .pdot{background:var(--accent)}
+  .pnode h4{font-family:var(--serif); font-weight:600; font-size:1.05rem; margin:0 0 .4rem; letter-spacing:-.01em}
+  .pnode .pm{font-family:var(--mono); font-size:.68rem; color:var(--accent-deep); background:var(--accent-soft); border:1px solid #f3cdb3; border-radius:.4rem; padding:.18rem .5rem; display:inline-block; margin-bottom:.55rem}
+  .pnode p{margin:0; font-size:.83rem; color:var(--ink-soft)}
+  @media (max-width:56rem){
+    .pipe{grid-template-columns:1fr}
+    .pnode{padding:0 0 2.2rem 0 !important}
+    .pnode::after{content:"↓"; right:auto; left:.75rem; top:auto; bottom:.35rem}
+  }
+
+  /* ── fan diagram (one persona, many projects) ─────── */
+  .fan-top{
+    max-width:30rem; margin:2.8rem auto 0; text-align:center;
+    background:var(--ink); color:var(--paper); border-radius:1rem;
+    padding:1.4rem 1.6rem;
+  }
+  .fan-top h4{font-family:var(--serif); font-weight:600; font-size:1.2rem; margin:0 0 .3rem}
+  .fan-top p{margin:0; font-size:.82rem; color:#d6d3d1}
+  .fan-top code{font-family:var(--mono); font-size:.78em; background:#33302c; color:var(--code-accent); padding:.1em .4em; border-radius:.3em}
+  .fan-stem{display:flex; justify-content:center; margin:.2rem 0}
+  .fan-stem span{font-family:var(--serif); font-style:italic; font-size:1.6rem; color:var(--accent)}
+  .fan{display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:1.1rem}
+  .fan .proj{border:1px solid var(--line); border-radius:1rem; background:#fffdf9; padding:1.4rem 1.4rem 1.3rem; text-align:left}
+  .fan .proj .pill{
+    display:inline-block; font-family:var(--mono); font-size:.62rem; letter-spacing:.14em;
+    text-transform:uppercase; padding:.22rem .6rem; border-radius:999px; margin-bottom:.8rem;
+    background:var(--paper-deep); border:1px solid var(--line); color:var(--ink-soft);
+  }
+  .fan .proj h5{font-family:var(--serif); font-weight:600; font-size:1.05rem; margin:0 0 .4rem}
+  .fan .proj p{margin:0 0 .8rem; font-size:.84rem; color:var(--ink-soft)}
+  .fan .proj pre{font-size:.68rem; padding:.8rem .9rem; box-shadow:none}
+
+  /* ── sources stack ────────────────────────────────── */
+  .stack{margin-top:2.6rem; border:1px solid var(--line); border-radius:1rem; overflow:hidden; background:#fffdf9}
+  .srow{display:grid; grid-template-columns:14rem 1fr 15rem; gap:1.4rem; padding:1.15rem 1.4rem; border-top:1px solid var(--line); align-items:start}
+  .srow:first-child{border-top:none}
+  .srow.hot{background:var(--accent-soft)}
+  .srow .sname{font-family:var(--serif); font-weight:600; font-size:1.02rem; letter-spacing:-.01em}
+  .srow .sname .sub{display:block; font-family:var(--mono); font-size:.64rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint); margin-top:.3rem; font-weight:400}
+  .srow .swhat{font-size:.86rem; color:var(--ink-soft); margin:0}
+  .srow .slever{font-size:.8rem; margin:0}
+  .srow .slever b{display:block; font-family:var(--mono); font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:.25rem; font-weight:500}
+  @media (max-width:56rem){.srow{grid-template-columns:1fr; gap:.5rem}}
+
+  /* ── loop strip (sandbox lifecycle) ───────────────── */
+  .loop{display:grid; grid-template-columns:repeat(4,1fr); gap:1.1rem; margin-top:2.6rem}
+  .lnode{border:1px solid var(--line); border-radius:1rem; background:#fffdf9; padding:1.3rem 1.3rem 1.2rem; position:relative}
+  .lnode .ln{font-family:var(--serif); font-style:italic; font-weight:300; font-size:1.6rem; color:var(--accent); line-height:1.2}
+  .lnode h4{font-family:var(--serif); font-weight:600; font-size:1.02rem; margin:.6rem 0 .4rem}
+  .lnode p{margin:0; font-size:.82rem; color:var(--ink-soft)}
+  .loop-back{
+    grid-column:1 / -1; text-align:center; font-family:var(--serif); font-style:italic;
+    color:var(--ink-faint); font-size:.95rem; padding-top:.4rem;
+  }
+  .loop-back b{color:var(--accent); font-style:normal; font-family:var(--mono); font-size:.72rem; letter-spacing:.1em}
+  @media (max-width:56rem){.loop{grid-template-columns:1fr 1fr}}
+
+  /* ── footer ───────────────────────────────────────── */
+  footer{
+    border-top:1px solid var(--line); padding:4.5rem 2rem 5.5rem;
+    background:var(--paper-deep);
+  }
+  footer .inner{display:flex; flex-wrap:wrap; gap:2rem; justify-content:space-between; align-items:flex-end}
+  footer .big a{
+    font-family:var(--serif); font-weight:600; letter-spacing:-.015em;
+    font-size:clamp(1.5rem,3vw,2.2rem); color:var(--ink); text-decoration:none;
+    border-bottom:2px solid var(--accent);
+  }
+  footer .big a:hover{color:var(--accent)}
+  footer .fine{font-family:var(--mono); font-size:.7rem; color:var(--ink-faint); line-height:2}
+
+  @media (max-width:56rem){
+    .step{grid-template-columns:1fr; gap:1.4rem}
+    .hero{padding:6rem 1.4rem 4.5rem}
+    .band{padding:4rem 1.4rem}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Claude Code · Field Guide · 2026</div>
+    <h1>One Claude Code,<br><em>many hats.</em></h1>
+    <p class="lede">You use Claude Code for <em style="font-style:normal;font-weight:600">everything</em> — but not everything at once. Marketing skills have no business in a refactor; a half-tried dev skill has no business in client work. Personas give each kind of work its own hat: isolated skills, plugins and MCP servers, switched with one command, all living in git.</p>
+    <div class="chips">
+      <a class="chip hot" href="#bootstrap">⚡ copy the setup prompt →</a>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="toc-inner">
+    <div class="toc-label">Contents</div>
+    <div class="toc-grid">
+      <a href="#doctrine"><span class="tno">01</span><span class="tk">the doctrine</span>Three ideas carry the system</a>
+      <a href="#shape"><span class="tno">02</span><span class="tk">the shape</span>Hats can live in a repo, too</a>
+      <a href="#build"><span class="tno">03</span><span class="tk">the build</span>Six steps, all just files</a>
+      <a href="#blast-radius"><span class="tno">04</span><span class="tk">the blast radius</span>Environments are personas</a>
+      <a href="#rhythm"><span class="tno">05</span><span class="tk">the rhythm</span>Everyday moves &amp; sandbox</a>
+      <a href="#recipe"><span class="tno">06</span><span class="tk">the recipe</span>One new hat, end to end</a>
+      <a href="#physics"><span class="tno">07</span><span class="tk">the physics</span>Why the persona file wins</a>
+      <a href="#map"><span class="tno">08</span><span class="tk">the map</span>Where capabilities come from</a>
+      <a href="#fine-print"><span class="tno">09</span><span class="tk">the fine print</span>What does not isolate</a>
+      <a href="#bootstrap"><span class="tno">10</span><span class="tk">the bootstrap</span>One paste sets it up</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── doctrine ── -->
+<section class="band" id="doctrine">
+  <div class="inner">
+    <div class="kicker"><span class="no">the doctrine</span><h2>Three ideas carry the whole system</h2></div>
+    <p class="prose">The failure mode is quiet: you install skills and MCP servers for <em>everything</em> you do — development, marketing, product, experiments — and every session loads <em>all of it</em>. The copy skills you added for launch week sit in the context of every refactor. The experimental skill you're trying this week leaks into every repo. Every MCP server is always connected, whether or not this session could possibly need it. Each addition is individually reasonable; the sum is a polluted context and a model that has to ignore most of what it was handed.</p>
+    <p class="prose" style="margin-top:1rem">Claude Code has no “profiles” feature to fix this — and doesn't need one. Three documented mechanisms compose into something better: a fully repo-native persona system — a persona being, simply, a hat you put on for a kind of work — where a session carries only what the work at hand actually uses.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="glyph">i.</div>
+        <h3>Plugins are the persona unit</h3>
+        <p>A plugin bundles skills, agents, hooks and MCP servers — and they toggle <strong>as one unit</strong> via <code>enabledPlugins</code>. Loose skills (e.g. from <code>npx skills add</code>) work too, controlled per-name via <code>skillOverrides</code> — plugins just make the toggle one key instead of many.</p>
+      </div>
+      <div class="card">
+        <div class="glyph">ii.</div>
+        <h3>A persona is a settings file</h3>
+        <p>One JSON per persona — global in <code>~/.claude/personas/</code> (dotfiles), or living in a repo's <code>.claude/personas/</code> when the persona belongs to a project — passed via <code>--settings</code>. It outranks project and user settings, so flipping capability per-persona just works.</p>
+      </div>
+      <div class="card">
+        <div class="glyph">iii.</div>
+        <h3>MCP sidecars carry context</h3>
+        <p>Skills say <em>how to work</em>; sidecars say <em>what you're connected to</em>. A shared base gives every persona chrome-devtools; the product persona adds PostHog; the marketer's experimental servers stay in the marketer's file. Zero cross-pollution.</p>
+      </div>
+    </div>
+
+    <div class="sysmap">
+      <h3 style="font-family:var(--serif);font-weight:600;font-size:1.55rem;letter-spacing:-.015em;margin:4rem 0 1.6rem">The whole system on one screen</h3>
+      <div style="overflow-x:auto">
+      <svg viewBox="0 0 960 1476" style="width:100%;min-width:640px;display:block" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" aria-label="Diagram of the persona system: persona anatomy, file locations, launcher behaviors, assembly flags, and the resulting session">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/>
+          </marker>
+        </defs>
+
+        <!-- ── A · anatomy ── -->
+        <text x="0" y="14" font-size="11" letter-spacing="3" fill="#c2410c">A HAT — 3 FILES</text>
+        <text x="960" y="14" font-size="11" fill="#a8a29e" text-anchor="end">any may be absent</text>
+        <rect x="0" y="26" width="960" height="128" rx="14" fill="#fffdf9" stroke="#e7e0d4"/>
+        <text x="28" y="66" font-size="14" font-weight="600" fill="#1c1917">designer.json</text>
+        <text x="250" y="66" font-size="11" font-weight="700" letter-spacing="2" fill="#c2410c">CAPABILITY</text>
+        <text x="470" y="66" font-size="13" fill="#57534e" font-family="Inter, sans-serif">which plugins &amp; skills are on</text>
+        <text x="28" y="102" font-size="14" font-weight="600" fill="#1c1917">designer.mcp.json</text>
+        <text x="250" y="102" font-size="11" font-weight="700" letter-spacing="2" fill="#c2410c">MCP</text>
+        <text x="470" y="102" font-size="13" fill="#57534e" font-family="Inter, sans-serif">which servers it talks to</text>
+        <text x="28" y="138" font-size="14" font-weight="600" fill="#1c1917">designer.md</text>
+        <text x="250" y="138" font-size="11" font-weight="700" letter-spacing="2" fill="#c2410c">SYSTEM PROMPT</text>
+        <text x="470" y="138" font-size="13" fill="#57534e" font-family="Inter, sans-serif">injected on top of repo CLAUDE.md</text>
+
+        <!-- ── B · where hats live ── -->
+        <text x="0" y="204" font-size="11" letter-spacing="3" fill="#c2410c">WHERE HATS LIVE</text>
+        <text x="960" y="204" font-size="12" fill="#7c2d12" text-anchor="end" font-family="Fraunces, Georgia, serif" font-style="italic">resolution: repo beats global</text>
+        <rect x="0" y="216" width="960" height="158" rx="14" fill="#fffdf9" stroke="#e7e0d4"/>
+        <text x="28" y="246" font-size="12.5" font-weight="700" fill="#1c1917">~/.claude/personas/</text>
+        <text x="220" y="246" font-size="11" fill="#a8a29e">— dotfiles · serves every repo</text>
+        <text x="28" y="276" font-size="12.5" fill="#1c1917">developer.json  designer.json  marketer.json  product.json  play.json</text>
+        <text x="28" y="302" font-size="12.5" fill="#1c1917">designer.md</text>
+        <text x="220" y="302" font-size="12" fill="#a8a29e">← the persona's system prompt</text>
+        <text x="28" y="328" font-size="12.5" fill="#1c1917">base.mcp.json</text>
+        <text x="220" y="328" font-size="12" fill="#a8a29e">← chrome-devtools — loads for EVERY persona</text>
+        <text x="28" y="354" font-size="12.5" fill="#1c1917">product.mcp.json</text>
+        <text x="220" y="354" font-size="12" fill="#a8a29e">← PostHog — product persona only</text>
+
+        <rect x="0" y="392" width="960" height="128" rx="14" fill="#fffdf9" stroke="#e7e0d4"/>
+        <text x="28" y="422" font-size="12.5" font-weight="700" fill="#1c1917">&lt;any-repo&gt;/.claude/personas/</text>
+        <text x="300" y="422" font-size="11" fill="#a8a29e">— per project</text>
+        <text x="28" y="450" font-size="12.5" fill="#1c1917">product.mcp.json</text>
+        <text x="220" y="450" font-size="12" fill="#a8a29e">← override: THIS repo's PostHog project</text>
+        <text x="28" y="475" font-size="12.5" fill="#1c1917">support.json</text>
+        <text x="220" y="475" font-size="12" fill="#a8a29e">← committed persona, project-owned (no secrets)</text>
+        <text x="28" y="500" font-size="12.5" fill="#1c1917">prod-rw.local.json</text>
+        <text x="220" y="500" font-size="12" fill="#a8a29e">← gitignored — credentials allowed</text>
+
+        <rect x="0" y="538" width="960" height="74" rx="14" fill="none" stroke="#e7e0d4" stroke-dasharray="5 5"/>
+        <text x="28" y="568" font-size="12.5" font-weight="700" fill="#57534e">optional · ~/dev/claude-code-plugins/</text>
+        <text x="390" y="568" font-size="11" fill="#a8a29e">— plugin packaging · add once per machine</text>
+        <text x="28" y="594" font-size="12.5" fill="#57534e">marketplace.json + plugins/{dev,ui,copy,product,sandbox}-skills</text>
+
+        <!-- ── C · launcher ── -->
+        <text x="0" y="664" font-size="11" letter-spacing="3" fill="#c2410c">THE LAUNCHER</text>
+        <rect x="0" y="682" width="200" height="34" rx="17" fill="#1c1917"/>
+        <text x="24" y="704" font-size="13" fill="#bef264">$ clau</text>
+        <line x1="212" y1="699" x2="292" y2="699" stroke="#c2410c" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="306" y="697" font-size="12.5" fill="#1c1917" font-family="Inter, sans-serif">lists personas · sidecars · marketplace health</text>
+        <text x="306" y="713" font-size="11.5" fill="#a8a29e" font-family="Inter, sans-serif">never launches anything blind</text>
+        <rect x="0" y="732" width="200" height="34" rx="17" fill="#c2410c"/>
+        <text x="24" y="754" font-size="13" fill="#fff" font-weight="600">$ clau designer</text>
+        <text x="306" y="753" font-size="11.5" fill="#a8a29e" font-family="Inter, sans-serif">flags after the name pass through · plain claude? just type claude</text>
+        <path d="M100 766 L100 858" stroke="#c2410c" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- ── D · assembly ── -->
+        <text x="130" y="852" font-size="11" letter-spacing="3" fill="#c2410c">THE ASSEMBLY — WHAT ONE LAUNCH GATHERS</text>
+        <rect x="40" y="868" width="580" height="56" rx="12" fill="#fffdf9" stroke="#e7e0d4"/>
+        <text x="64" y="892" font-size="13" font-weight="600" fill="#1c1917">designer.json</text>
+        <text x="200" y="892" font-size="12" fill="#57534e" font-family="Inter, sans-serif">repo copy first, else dotfiles</text>
+        <text x="64" y="912" font-size="11.5" fill="#a8a29e" font-family="Inter, sans-serif">outranks project + user settings</text>
+        <rect x="648" y="882" width="130" height="26" rx="13" fill="#fff1e7" stroke="#f3cdb3"/>
+        <text x="713" y="899" font-size="11" fill="#7c2d12" text-anchor="middle">--settings</text>
+        <path d="M330 924 L330 948" stroke="#c2410c" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <rect x="40" y="956" width="580" height="70" rx="12" fill="#fffdf9" stroke="#e7e0d4"/>
+        <text x="64" y="980" font-size="13" font-weight="600" fill="#1c1917">base.mcp.json + designer.mcp.json</text>
+        <text x="420" y="980" font-size="12" fill="#57534e" font-family="Inter, sans-serif">(repo | global)</text>
+        <text x="64" y="1000" font-size="11.5" fill="#a8a29e" font-family="Inter, sans-serif">additive — repo/user servers still load</text>
+        <text x="64" y="1016" font-size="11.5" fill="#a8a29e" font-family="Inter, sans-serif">--strict-mcp-config = hermetic session</text>
+        <rect x="648" y="976" width="150" height="26" rx="13" fill="#fff1e7" stroke="#f3cdb3"/>
+        <text x="723" y="993" font-size="11" fill="#7c2d12" text-anchor="middle">--mcp-config</text>
+        <path d="M330 1026 L330 1050" stroke="#c2410c" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <rect x="40" y="1058" width="580" height="56" rx="12" fill="#fffdf9" stroke="#e7e0d4"/>
+        <text x="64" y="1082" font-size="13" font-weight="600" fill="#1c1917">designer.md</text>
+        <text x="200" y="1082" font-size="12" fill="#57534e" font-family="Inter, sans-serif">(repo | global)</text>
+        <text x="64" y="1102" font-size="11.5" fill="#a8a29e" font-family="Inter, sans-serif">on top of repo CLAUDE.md — never replaces it</text>
+        <rect x="648" y="1072" width="270" height="26" rx="13" fill="#fff1e7" stroke="#f3cdb3"/>
+        <text x="783" y="1089" font-size="11" fill="#7c2d12" text-anchor="middle">--append-system-prompt-file</text>
+        <path d="M330 1114 L330 1138" stroke="#c2410c" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <rect x="40" y="1146" width="580" height="40" rx="20" fill="#1c1917"/>
+        <text x="64" y="1171" font-size="13" fill="#e7e5e4">CLAU_PERSONA=designer</text>
+        <text x="278" y="1171" font-size="13" fill="#bef264">claude …</text>
+        <path d="M330 1186 L330 1212" stroke="#c2410c" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- ── E · the session ── -->
+        <text x="0" y="1236" font-size="11" letter-spacing="3" fill="#c2410c">THE SESSION</text>
+        <rect x="0" y="1248" width="960" height="140" rx="14" fill="#1c1917"/>
+        <text x="28" y="1280" font-size="12.5" fill="#fdba74">skills</text>
+        <text x="120" y="1280" font-size="12.5" fill="#e7e5e4">ui-skills only — dev / copy / product-skills invisible</text>
+        <text x="28" y="1306" font-size="12.5" fill="#fdba74">MCP</text>
+        <text x="120" y="1306" font-size="12.5" fill="#e7e5e4">chrome-devtools + designer's + inherited repo servers</text>
+        <text x="28" y="1332" font-size="12.5" fill="#fdba74">prompt</text>
+        <text x="120" y="1332" font-size="12.5" fill="#e7e5e4">repo CLAUDE.md + designer.md injected on top</text>
+        <text x="28" y="1364" font-size="12.5" fill="#fb923c" font-weight="700">⬢ designer</text>
+        <text x="130" y="1364" font-size="12.5" fill="#e7e5e4">· Fable 5 · repo-name</text>
+        <text x="330" y="1364" font-size="11.5" fill="#78716c">← statusline: the persona is visible all session</text>
+        <text x="0" y="1424" font-size="12" fill="#a8a29e" font-family="Inter, sans-serif" font-style="italic">meanwhile, same repo, other terminals:</text>
+        <text x="0" y="1450" font-size="12" fill="#57534e">clau marketer → copy-skills + their experiments&#160;&#160;&#160;clau prod-ro → RO credential + deny-list&#160;&#160;&#160;clau play → sandbox quarantine</text>
+      </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── layout ── -->
+<section class="band deep" id="shape">
+  <div class="inner">
+    <div class="kicker"><span class="no">the shape</span><h2>Hats can live in a repo, too</h2></div>
+    <div class="step" style="border:none;padding-top:0">
+      <div>
+        <h3 style="margin-top:0">In-repo personas — supported out of the box</h3>
+        <div class="txt">
+          <p>Nothing extra to configure: <code>clau</code> checks the repo <em>first</em>, so a persona file inside a project either shadows your global persona or exists only there. <code>clau -h</code> labels these <em>(repo override)</em>. Three patterns fall out:</p>
+          <p><strong>Committed, shared</strong> — a persona that belongs to the project, not to you. Anyone who clones the repo (with <code>clau</code> + the marketplace) gets it. Committed sidecars carry <code>${VAR}</code> placeholders only, never secrets.</p>
+          <p><strong>Committed override</strong> — the repo customizes a global persona: a local <code>designer.json</code> wins over your dotfiles one only while you're in that repo — extra plugin, tighter permissions, whatever the project needs.</p>
+          <p><strong>Gitignored, personal</strong> — where real credentials may live, machine-local. For repos you don't own, <code>.git/info/exclude</code> ignores files for you alone without touching any tracked file.</p>
+          <div class="note">A committed persona is a settings layer someone else may have written — it can carry <code>permissions.allow</code> rules. It can't ambush you (you invoke it explicitly, and <code>clau -h</code> shows where it resolves from), but glance at it before first launch in a freshly cloned repo. Same hygiene as a committed <code>.mcp.json</code>.</div>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">resolution order — clau &lt;name&gt; (same for .mcp.json and .md sidecars)</span>1. &lt;repo&gt;/.claude/personas/&lt;name&gt;.json   <span class="c">← repo wins: override or repo-only persona</span>
+2. ~/.claude/personas/&lt;name&gt;.json        <span class="c">← global fallback (dotfiles)</span>
+
+<span class="path">committed project persona — no secrets</span>$ cat emma-repo/.claude/personas/support.json
+{ <span class="a">"enabledPlugins"</span>: { <span class="a">"copy-skills@my-marketplace"</span>: <span class="g">true</span> } }
+$ cat emma-repo/.claude/personas/support.mcp.json
+{ <span class="a">"mcpServers"</span>: { <span class="a">"crm"</span>: { …, <span class="a">"env"</span>: { <span class="a">"CRM_TOKEN"</span>: <span class="g">"${CRM_TOKEN}"</span> } } } }
+
+<span class="path">gitignored personal persona — credentials allowed</span><span class="c"># .gitignore — or, in repos you don't own, .git/info/exclude:</span>
+.claude/personas/*.local.json
+.claude/personas/prod-rw.json
+
+<span class="c"># clau matches &lt;persona&gt;.json exactly — so either ignore the exact
+# names you use, or ignore the whole dir where everything is personal.</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── steps ── -->
+<section class="band" id="build">
+  <div class="inner">
+    <div class="kicker"><span class="no">the build</span><h2>Six steps, all just files</h2></div>
+
+    <div class="step">
+      <div>
+        <div class="num">01</div>
+        <h3>Install capability — you probably already have it</h3>
+        <div class="txt">
+          <p>Personas don't require authoring anything: they toggle whatever is <em>already installed</em>. Most people get capability from existing marketplaces (<code>/plugin</code>) or the skills ecosystem (<code>npx skills add</code>). The only thing to note down is each plugin's <code>plugin@marketplace</code> name — that's what persona files reference.</p>
+          <p>Loose skills load in every persona by default; each persona tames them with <code>skillOverrides</code>. Building your own plugins repo is the advanced path — worth it once you have skills of your own to bundle (“One new hat, end to end” below walks through it).</p>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">capability comes from wherever you already get it</span><span class="c"># plugins — from any existing marketplace (one-time add per machine)</span>
+&gt; /plugin marketplace add &lt;owner&gt;/&lt;repo&gt;
+&gt; /plugin                 <span class="c"># browse &amp; install · note the plugin@marketplace names</span>
+
+<span class="c"># loose skills — from the ecosystem</span>
+$ npx skills add someone/design-skills
+
+<span class="c"># your own plugins repo — advanced, only when you outgrow the above</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div>
+        <div class="num">02</div>
+        <h3>Write the persona files</h3>
+        <div class="txt">
+          <p>One JSON per persona: which plugins are on, which are off (keys exactly as <code>/plugin</code> lists them), loose skills hidden via <code>skillOverrides</code>, plus persona-scoped permissions or suppressed repo MCP servers. The marketer gets copy skills and <em>explicitly</em> no dev or product skills.</p>
+          <p>They live in <code>~/.claude/personas/</code> (dotfiles-managed) — <strong>one copy for every repo</strong>, because context comes later, in the sidecars. A repo-local <code>.claude/personas/&lt;persona&gt;.json</code> overrides the global one — a rare escape hatch, not a requirement.</p>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">~/.claude/personas/marketer.json</span>{
+  <span class="a">"enabledPlugins"</span>: {
+    <span class="a">"copy-skills@my-marketplace"</span>:    <span class="g">true</span>,
+    <span class="a">"dev-skills@my-marketplace"</span>:     <span class="g">false</span>,
+    <span class="a">"product-skills@my-marketplace"</span>: <span class="g">false</span>,
+    <span class="a">"ui-skills@my-marketplace"</span>:      <span class="g">false</span>,
+    <span class="a">"sandbox-skills@my-marketplace"</span>: <span class="g">false</span>
+  },
+  <span class="a">"skillOverrides"</span>: { <span class="a">"some-loose-skill"</span>: <span class="g">"off"</span> },
+  <span class="a">"disabledMcpjsonServers"</span>: [<span class="g">"postgres-prod-readonly"</span>]
+}
+
+<span class="c">// designer.json → ui-skills on · product.json → product-skills on
+// developer.json → dev-skills on (launched explicitly: clau developer)</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div>
+        <div class="num">03</div>
+        <h3>Give each hat its MCP context</h3>
+        <div class="txt">
+          <p>Two kinds of sidecar, both in <code>~/.claude/personas/</code>: <strong>base</strong> (loads for every persona — chrome-devtools lives here) and <strong>per-persona</strong> (PostHog for product, the marketer's experimental servers for marketer).</p>
+          <p>Sidecars are <strong>additive</strong> — they stack on top of the user-level and repo <code>.mcp.json</code> servers, so your dev sessions keep their usual databases. Suppress a specific inherited server with <code>disabledMcpjsonServers</code> in the persona file, or pass <code>--strict-mcp-config</code> for a hermetic session.</p>
+          <p>Secrets stay out of git: <code>${ENV_VAR}</code> placeholders in committed sidecars, or gitignore the file entirely.</p>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">~/.claude/personas/base.mcp.json      — every persona</span>{
+  <span class="a">"mcpServers"</span>: {
+    <span class="a">"chrome-devtools"</span>: {
+      <span class="a">"command"</span>: <span class="g">"npx"</span>,
+      <span class="a">"args"</span>: [<span class="g">"-y"</span>, <span class="g">"chrome-devtools-mcp@latest"</span>]
+    }
+  }
+}
+
+<span class="path">~/.claude/personas/product.mcp.json   — product persona only</span>{
+  <span class="a">"mcpServers"</span>: {
+    <span class="a">"posthog"</span>: {
+      <span class="a">"command"</span>: <span class="g">"npx"</span>,
+      <span class="a">"args"</span>: [<span class="g">"-y"</span>, <span class="g">"@posthog/mcp"</span>],
+      <span class="a">"env"</span>: { <span class="a">"POSTHOG_API_KEY"</span>: <span class="g">"${POSTHOG_API_KEY}"</span> }
+    }
+  }
+}
+
+<span class="c">// marketer.mcp.json — whatever they're trying this week;
+// blast radius is one file, one persona.</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div>
+        <div class="num">04</div>
+        <h3>Wire the global launcher</h3>
+        <div class="txt">
+          <p>One zsh function in your dotfiles — <strong>no per-repo scripts, ever.</strong> Two behaviors, total:</p>
+          <p><strong><code>clau</code></strong> → the self-discovery loop: it scans the same files the launcher reads — persona JSONs (global + this repo), sidecars, the base — and cross-checks every <code>plugin@marketplace</code> key against <code>~/.claude/plugins/marketplaces/</code>. It never launches anything blind: it shows you the available personas and lets you choose. The list can't drift from reality because it <em>is</em> the reality check.</p>
+          <p><strong><code>clau &lt;persona&gt;</code></strong> → settings + sidecars. Unknown name errors and points at the list. If a <code>&lt;persona&gt;.md</code> exists, it's appended to the system prompt (<code>--append-system-prompt-file</code>) — your personal CLAUDE.md for that persona, stacking <em>on top of</em> the shared one, never replacing it. The launch line also hands the persona name to the session as <code>CLAU_PERSONA</code> (child process only), which powers the statusline in the next step. Anything after the name passes through: <code>clau designer -c</code> continues the last designer conversation.</p>
+          <p>Want plain <code>claude</code>? Type <code>claude</code>. <code>clau</code> is only for hats.</p>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">~/.zshrc (dotfiles)</span><span class="c"># clau            → list available personas
+# clau designer   → wear one · flags after the name pass through (clau designer -c)
+# plain claude?   → just type claude</span>
+clau() {
+  local pdir=<span class="g">"$HOME/.claude/personas"</span>
+  local root; root=<span class="g">"$(git rev-parse --show-toplevel 2>/dev/null || pwd)"</span>
+
+  <span class="c"># no persona named → self-discovery: read the same files clau launches from</span>
+  if (( $# == 0 )) || [[ <span class="g">"$1"</span> == <span class="g">"-h"</span> || <span class="g">"$1"</span> == <span class="g">"--help"</span> ]]; then
+    print <span class="g">"clau — persona launcher · clau &lt;persona&gt; [claude flags…]\n"</span>
+    local f name plugins side
+    for f in <span class="g">"$pdir"</span>/*.json(N) <span class="g">"$root/.claude/personas"</span>/*.json(N); do
+      [[ <span class="g">"$f"</span> == *.mcp.json ]] &amp;&amp; continue
+      name=<span class="g">"${${f:t}%.json}"</span>
+      plugins=$(jq -r <span class="g">'[.enabledPlugins // {} | to_entries[] | select(.value) | .key | split("@")[0]] | join(", ")'</span> <span class="g">"$f"</span>)
+      side=<span class="g">""</span>
+      [[ -f <span class="g">"$pdir/$name.mcp.json"</span> ]] &amp;&amp; side=<span class="g">"global sidecar"</span>
+      [[ -f <span class="g">"$root/.claude/personas/$name.mcp.json"</span> ]] &amp;&amp; side=<span class="g">"repo sidecar"</span>
+      [[ <span class="g">"$f"</span> == <span class="g">"$root"</span>/* ]] &amp;&amp; name=<span class="g">"$name (repo override)"</span>
+      printf <span class="g">"  %-24s plugins: %-36s mcp: %s\n"</span> <span class="g">"$name"</span> <span class="g">"${plugins:-none}"</span> <span class="g">"${side:-base only}"</span>
+    done
+    [[ -f <span class="g">"$pdir/base.mcp.json"</span> ]] &amp;&amp; print <span class="g">"\n  base.mcp.json ✓ — loads for every persona"</span>
+    <span class="c"># marketplace health: every plugin@marketplace key must resolve on this machine</span>
+    local m; local -a pfiles; pfiles=(<span class="g">"$pdir"</span>/*.json(N))
+    (( ${#pfiles} )) &amp;&amp; for m in $(jq -r <span class="g">'.enabledPlugins // {} | keys[] | split("@")[1]'</span> <span class="g">"${pfiles[@]}"</span> | sort -u); do
+      if [[ -d <span class="g">"$HOME/.claude/plugins/marketplaces/$m"</span> ]]; then
+        print <span class="g">"  marketplace $m ✓"</span>
+      else
+        print <span class="g">"  marketplace $m ✗ NOT registered → /plugin marketplace add &lt;path&gt;"</span>
+      fi
+    done
+    return
+  fi
+
+  <span class="c"># persona launch: settings (repo override → global) + base + persona sidecar</span>
+  local persona=<span class="g">"$1"</span>; shift
+  local -a args mcp; local p
+  for p in <span class="g">"$root/.claude/personas/$persona.json"</span> <span class="g">"$pdir/$persona.json"</span>; do
+    [[ -f $p ]] &amp;&amp; { args+=(--settings <span class="g">"$p"</span>); break; }
+  done
+  (( ${#args} )) || { print -u2 <span class="g">"clau: unknown persona '$persona' — run clau to list personas"</span>; return 1 }
+  [[ -f <span class="g">"$pdir/base.mcp.json"</span> ]] &amp;&amp; mcp+=(<span class="g">"$pdir/base.mcp.json"</span>)
+  for p in <span class="g">"$root/.claude/personas/$persona.mcp.json"</span> <span class="g">"$pdir/$persona.mcp.json"</span>; do
+    [[ -f $p ]] &amp;&amp; { mcp+=(<span class="g">"$p"</span>); break; }
+  done
+  (( ${#mcp} )) &amp;&amp; args+=(--mcp-config <span class="g">"${mcp[@]}"</span>)
+  <span class="c"># persona instructions: your own CLAUDE.md-on-top (repo-local wins)</span>
+  for p in <span class="g">"$root/.claude/personas/$persona.md"</span> <span class="g">"$pdir/$persona.md"</span>; do
+    [[ -f $p ]] &amp;&amp; { args+=(--append-system-prompt-file <span class="g">"$p"</span>); break; }
+  done
+  CLAU_PERSONA=<span class="g">"$persona"</span> command claude <span class="g">"${args[@]}"</span> <span class="g">"$@"</span>
+}</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div>
+        <div class="num">05</div>
+        <h3>Show the hat in the statusline</h3>
+        <div class="txt">
+          <p>One script, one settings key — and every <code>clau</code> session displays which hat it's wearing. The script reads the session JSON Claude Code pipes to it, plus the <code>CLAU_PERSONA</code> variable the launcher set (the statusline command inherits the session's environment).</p>
+          <p>Bare <code>claude</code> sessions degrade gracefully: no persona variable, no persona segment — just model and directory.</p>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">~/.claude/statusline.sh (dotfiles) — chmod +x</span>#!/bin/sh
+input=$(cat)
+model=$(printf <span class="g">'%s'</span> <span class="g">"$input"</span> | jq -r <span class="g">'.model.display_name // "Claude"'</span>)
+dir=$(basename <span class="g">"$(printf '%s' "$input" | jq -r '.workspace.current_dir // .cwd // "?"')"</span>)
+if [ -n <span class="g">"$CLAU_PERSONA"</span> ]; then
+  printf <span class="g">'\033[1;38;5;208m⬢ %s\033[0m · %s · %s'</span> <span class="g">"$CLAU_PERSONA"</span> <span class="g">"$model"</span> <span class="g">"$dir"</span>
+else
+  printf <span class="g">'%s · %s'</span> <span class="g">"$model"</span> <span class="g">"$dir"</span>
+fi
+
+<span class="path">~/.claude/settings.json — add the key</span>{ <span class="a">"statusLine"</span>: { <span class="a">"type"</span>: <span class="g">"command"</span>, <span class="a">"command"</span>: <span class="g">"~/.claude/statusline.sh"</span> } }
+
+<span class="c"># result, in a clau designer session:   ⬢ designer · Fable 5 · emma-repo
+# result, in a bare claude session:      Fable 5 · emma-repo</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div>
+        <div class="num">06</div>
+        <h3>First flight — prove the isolation</h3>
+        <div class="txt">
+          <p>The one load-bearing claim taken from docs rather than tested live is <code>enabledPlugins</code> flipping via <code>--settings</code>. Your first real session is the test.</p>
+          <div class="note ok">Pass = the product session lists only product plugins, no dev or design slash-commands, and <code>/mcp</code> shows chrome-devtools + posthog.</div>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">verify</span><span class="c"># discovery first — what can this machine launch? (bare clau = same list)</span>
+$ clau
+  developer     plugins: dev-skills        mcp: base only
+  designer      plugins: ui-skills         mcp: base only
+  marketer      plugins: copy-skills       mcp: global sidecar
+  product       plugins: product-skills    mcp: global sidecar
+  play          plugins: sandbox-skills    mcp: base only
+
+  base.mcp.json ✓ — loads for every persona
+  marketplace my-marketplace ✓
+
+$ clau product
+<span class="c"># statusline: ⬢ product · Fable 5 · &lt;repo&gt;</span>
+
+<span class="c"># inside the session:</span>
+&gt; /plugin      <span class="c">→ product-skills ✓ · dev-skills ✗ · ui-skills ✗</span>
+&gt; /mcp         <span class="c">→ chrome-devtools + posthog (+ inherited repo servers)</span>
+&gt; /skills      <span class="c">→ no dev or design commands anywhere</span>
+
+<span class="c"># three personas at once, same repo, separate terminals:</span>
+$ clau developer  <span class="c"># dev-skills + repo databases</span>
+$ clau designer   <span class="c"># ui-skills + chrome-devtools</span>
+$ clau marketer   <span class="c"># copy-skills + their experimental servers</span></pre>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── environments ── -->
+<section class="band deep" id="blast-radius">
+  <div class="inner">
+    <div class="kicker"><span class="no">the blast radius</span><h2>Environments are personas too</h2></div>
+    <p class="prose">Staging and production aren't just different credentials — they're different <strong>postures</strong>. Model them as hats: same debug skills, different sidecars, different permission layers. Which blast radius you're holding is decided at launch, visible in <code>clau -h</code>, and can't drift mid-session.</p>
+
+    <div class="step">
+      <div>
+        <h3 style="margin-top:0">Same servers, different credentials</h3>
+        <div class="txt">
+          <p>Both sidecars declare the <em>same</em> MCP servers — only the <code>${VAR}</code> references differ. Committed files carry shape; secrets come from the shell.</p>
+          <p>Three ways to keep credentials out of git, by escalating paranoia: <strong>env placeholders</strong> resolved by direnv or your keychain · <strong>gitignored sidecars</strong> (dotfiles manage <code>*.json</code>, exclude the credential-bearing ones) · <strong>zero-on-disk</strong> via <code>op run</code>.</p>
+          <div class="note"><code>${VAR}</code> / <code>${VAR:-default}</code> expansion is documented for <code>.mcp.json</code>; the same parser should cover <code>--mcp-config</code> files — confirm on the first staging flight before trusting it for prod.</div>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">~/.claude/personas/debug-staging.mcp.json</span>{ <span class="a">"mcpServers"</span>: { <span class="a">"postgres"</span>: { …,
+    <span class="a">"env"</span>: { <span class="a">"DATABASE_URL"</span>: <span class="g">"${STAGING_DB_URL}"</span> } } } }
+
+<span class="path">~/.claude/personas/debug-production.mcp.json</span>{ <span class="a">"mcpServers"</span>: { <span class="a">"postgres"</span>: { …,
+    <span class="a">"env"</span>: { <span class="a">"DATABASE_URL"</span>: <span class="g">"${PROD_DB_URL_RO}"</span> } } } }
+
+<span class="c"># zero secrets on disk — 1Password injects for one process tree:</span>
+$ op run --env-file=prod.env -- clau debug-production</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div>
+        <h3>Read-only and read-write are different hats</h3>
+        <div class="txt">
+          <p><strong>Layered isolation:</strong> <code>prod-ro</code> uses an actual read-only database role — the credential itself is the boundary, the persona's deny-list is the second layer. <code>prod-rw</code> holds the write credential but gates every mutating tool behind approval.</p>
+          <p><strong>Treat <code>prod-rw</code> like sudo:</strong> launched hermetically for one specific mutation, closed after. Make <code>prod-ro</code> the reflex; the asymmetry in friction is the feature.</p>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">~/.claude/personas/prod-ro.json</span>{
+  <span class="a">"enabledPlugins"</span>: { <span class="a">"debug-skills@my-marketplace"</span>: <span class="g">true</span> },
+  <span class="a">"permissions"</span>: { <span class="a">"deny"</span>: [<span class="g">"Bash(psql*)"</span>, <span class="g">"mcp__postgres__execute_sql"</span>] },
+  <span class="a">"disabledMcpjsonServers"</span>: [<span class="g">"postgres-prod-readonly"</span>]
+}
+
+<span class="path">~/.claude/personas/prod-rw.json</span>{
+  <span class="a">"enabledPlugins"</span>: { <span class="a">"debug-skills@my-marketplace"</span>: <span class="g">true</span> },
+  <span class="a">"permissions"</span>: { <span class="a">"ask"</span>: [<span class="g">"mcp__postgres__*"</span>, <span class="g">"Bash"</span>] }
+}
+
+<span class="c"># the habit:</span>
+$ clau prod-ro                          <span class="c"># reflexive</span>
+$ clau prod-rw --strict-mcp-config      <span class="c"># deliberate, short-lived</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── everyday ── -->
+<section class="band" id="rhythm">
+  <div class="inner">
+    <div class="kicker"><span class="no">the rhythm</span><h2>Everyday moves</h2></div>
+    <p class="prose">The system earns its keep in the loop below: experiments stay quarantined in a sandbox plugin that only the <code>play</code> persona can see, and promotion is a one-line move — not a migration.</p>
+    <div class="loop">
+      <div class="lnode">
+        <div class="ln">a.</div>
+        <h4>Capture</h4>
+        <p>New skill — written by you or pulled with <code>npx skills add</code> — lands in <code>plugins/sandbox-skills/</code>. Never in <code>~/.claude/skills/</code>, which would leak it everywhere.</p>
+      </div>
+      <div class="lnode">
+        <div class="ln">b.</div>
+        <h4>Quarantine</h4>
+        <p><code>"sandbox-skills@my-marketplace": true</code> in <code>play.json</code> — and nowhere else. Developer, designer and marketer sessions never see it.</p>
+      </div>
+      <div class="lnode">
+        <div class="ln">c.</div>
+        <h4>Trial</h4>
+        <p>Use it on real tasks in <code>clau play</code>. Iterate in place: edit the skill, <code>/reload-plugins</code>, retry — no restart.</p>
+      </div>
+      <div class="lnode">
+        <div class="ln">d.</div>
+        <h4>Verdict</h4>
+        <p>Survivor → <code>git mv</code> into the real plugin. Failure → delete the directory. The sandbox stays lean either way.</p>
+      </div>
+      <div class="loop-back">…and back to <b>a.</b> for the next experiment — working personas untouched throughout.</div>
+    </div>
+
+    <div class="step" style="border-top:none; padding-bottom:1rem; margin-top:1.5rem">
+      <div>
+        <h3 style="margin-top:0">One-off skills from the ecosystem</h3>
+        <div class="txt">
+          <p>Found “new design skills” on skills.sh or GitHub? Three ways in, by commitment level:</p>
+          <p><strong>Taste it</strong> — <code>npx skills use</code> runs a skill once without installing anything. Perfect for a genuine one-off.</p>
+          <p><strong>Trial it</strong> — install with <code>--copy</code> inside the plugins repo, move the skill folder into the sandbox plugin, and it's quarantined to <code>clau play</code> like any other experiment.</p>
+          <p><strong>Keep it</strong> — promote from sandbox into <code>ui-skills</code> and it ships with the designer persona, in every repo, immediately.</p>
+          <div class="note">Bare <code>npx skills add</code> drops <em>loose</em> skills into the current project's <code>.claude/skills/</code> (or with <code>-g</code>, into <code>~/.claude/skills/</code>) — both are persona-blind. Fine for a five-minute test in one repo; anything that survives moves into a plugin.</div>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">the three commitment levels</span><span class="c"># taste — run once, install nothing</span>
+$ npx skills use someone/design-skills@polish-ui
+
+<span class="c"># trial — into the sandbox plugin (quarantined to clau play)</span>
+$ cd ~/dev/claude-code-plugins
+$ npx skills add someone/design-skills --copy -a claude -y
+$ git mv .claude/skills/polish-ui \
+         plugins/sandbox-skills/skills/polish-ui
+
+<span class="c"># keep — promote into the designer persona</span>
+$ git mv plugins/sandbox-skills/skills/polish-ui \
+         plugins/ui-skills/skills/polish-ui</pre>
+      </div>
+    </div>
+    <div class="recipes">
+      <div class="recipe">
+        <h4>Flip a plugin mid-session</h4>
+        <p>No restart needed — toggle and reload from inside any session.</p>
+<pre>&gt; /plugin          <span class="c"># enable / disable</span>
+&gt; /reload-plugins  <span class="c"># takes effect now</span></pre>
+      </div>
+      <div class="recipe">
+        <h4>Resume in a different hat</h4>
+        <p>History and persona are independent: <code>--resume</code> restores the conversation, capability comes from the launch. Started in the wrong hat? Exit, relaunch, same transcript — new skills, MCP and prompt.</p>
+<pre>$ clau design -c         <span class="c"># continue last convo, design persona</span>
+$ clau product --resume  <span class="c"># pick any session, product persona</span></pre>
+      </div>
+      <div class="recipe">
+        <h4>Add a whole new persona</h4>
+        <p>A “researcher” persona later? One plugin, one line in the marketplace manifest, one persona file. No project repo changes at all.</p>
+<pre>claude-code-plugins/plugins/research-skills/…
+~/.claude/personas/researcher.json
+$ clau researcher  <span class="c"># works in every repo immediately</span></pre>
+      </div>
+      <div class="recipe">
+        <h4>Onboard a new machine</h4>
+        <p>Clone the plugins repo, install dotfiles (personas + <code>clau</code>), then the one manual step git can't carry — register the marketplace.</p>
+<pre>&gt; /plugin marketplace add ~/dev/claude-code-plugins
+$ export POSTHOG_API_KEY=…
+$ clau product   <span class="c"># check /plugin + /mcp</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── recipe: one new hat, end to end ── -->
+<section class="band deep" id="recipe">
+  <div class="inner">
+    <div class="kicker"><span class="no">the recipe</span><h2>One new hat, end to end</h2></div>
+    <div class="step" style="border:none;padding-top:0">
+      <div>
+        <h3 style="margin-top:0">A “researcher” persona with custom skills + custom MCP</h3>
+        <div class="txt">
+          <p>The whole flow, condensed to one copy-paste. This is the <strong>advanced path</strong> from step 01 — your own custom skills, in your own tiny plugins repo that doubles as a personal marketplace. Two files there, two in dotfiles, zero in any project repo.</p>
+          <p><strong>①–②</strong> capability: a skill folder inside a new plugin, plus a marketplace manifest at the repo root — created once; every later plugin is one more line in it. The <code>description:</code> frontmatter is what makes Claude actually invoke the skill — write it as “what it does + when to use it”.</p>
+          <p><strong>③</strong> the persona itself: which plugins are on, everything else explicitly off.</p>
+          <p><strong>④</strong> its context: a custom MCP server only this persona sees. Key comes from the shell, not the file.</p>
+          <p><strong>⑤</strong> first time only: register the repo as a marketplace — one command, per machine. Every plugin you add to it afterwards just works. <code>clau</code> confirms before you launch.</p>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">① the skill, inside a new plugin (plugins repo)</span>$ cd ~/dev/claude-code-plugins
+$ mkdir -p plugins/research-skills/{.claude-plugin,skills/deep-dive}
+
+$ cat &gt; plugins/research-skills/.claude-plugin/plugin.json &lt;&lt;'EOF'
+{ <span class="a">"name"</span>: <span class="g">"research-skills"</span>, <span class="a">"version"</span>: <span class="g">"0.1.0"</span>,
+  <span class="a">"description"</span>: <span class="g">"Everything the researcher persona knows how to do"</span> }
+EOF
+
+$ cat &gt; plugins/research-skills/skills/deep-dive/SKILL.md &lt;&lt;'EOF'
+---
+name: deep-dive
+description: Produce a structured research brief on a topic.
+  Use when asked to "research X", "deep dive", or "compare sources".
+---
+1. Clarify the question and success criteria.
+2. Search broadly, then read the three strongest sources.
+3. Return: findings · disagreements · open questions · sources.
+EOF
+
+<span class="path">② the marketplace manifest (.claude-plugin/marketplace.json — create once)</span>{ <span class="a">"name"</span>: <span class="g">"my-marketplace"</span>, <span class="a">"owner"</span>: { <span class="a">"name"</span>: <span class="g">"Alex"</span> },
+  <span class="a">"plugins"</span>: [
+    { <span class="a">"name"</span>: <span class="g">"research-skills"</span>, <span class="a">"source"</span>: <span class="g">"./plugins/research-skills"</span> } ] }
+
+$ git add -A &amp;&amp; git commit -m <span class="g">"research-skills plugin"</span>
+
+<span class="path">③ the persona (dotfiles)</span>$ cat &gt; ~/.claude/personas/researcher.json &lt;&lt;'EOF'
+{ <span class="a">"enabledPlugins"</span>: {
+    <span class="a">"research-skills@my-marketplace"</span>: <span class="g">true</span>,
+    <span class="a">"dev-skills@my-marketplace"</span>:      <span class="g">false</span> } }
+EOF
+
+<span class="path">④ its custom MCP (dotfiles) — only this persona sees it</span>$ cat &gt; ~/.claude/personas/researcher.mcp.json &lt;&lt;'EOF'
+{ <span class="a">"mcpServers"</span>: { <span class="a">"exa"</span>: {
+    <span class="a">"command"</span>: <span class="g">"npx"</span>, <span class="a">"args"</span>: [<span class="g">"-y"</span>, <span class="g">"exa-mcp-server"</span>],
+    <span class="a">"env"</span>: { <span class="a">"EXA_API_KEY"</span>: <span class="g">"${EXA_API_KEY}"</span> } } } }
+EOF
+
+<span class="path">⑤ register once, then fly</span>&gt; /plugin marketplace add ~/dev/claude-code-plugins   <span class="c"># first time only</span>
+
+$ clau
+  researcher    plugins: research-skills    mcp: global sidecar
+$ clau researcher      <span class="c"># works in every repo immediately</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── precedence ── -->
+<section class="band" id="physics">
+  <div class="inner">
+    <div class="kicker"><span class="no">the physics</span><h2>Why the persona file wins</h2></div>
+    <p class="prose">Settings merge by precedence. The persona slot sits above every file on disk — only live CLI flags and managed org policy outrank it.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Layer</th><th>Rank</th><th>Persona role</th></tr></thead>
+        <tbody>
+          <tr><td><code>--model</code>, <code>--mcp-config</code>, … CLI flags</td><td class="rank">highest</td><td>The launcher's sidecar flags live here.</td></tr>
+          <tr><td>Managed org policy</td><td class="rank">·</td><td>Unused in a solo setup.</td></tr>
+          <tr class="star"><td><code>--settings</code> file</td><td class="rank">·</td><td><strong>The persona.</strong> Wins <code>enabledPlugins</code>, permissions, hooks, model, env.</td></tr>
+          <tr><td><code>.claude/settings.local.json</code></td><td class="rank">·</td><td>Machine-local tweaks for <em>all</em> personas in a repo.</td></tr>
+          <tr><td><code>.claude/settings.json</code></td><td class="rank">·</td><td>Team baseline — the implicit developer default.</td></tr>
+          <tr><td><code>~/.claude/settings.json</code></td><td class="rank">lowest</td><td>Keep experiments <em>disabled</em> here; personas opt in.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── sources ── -->
+<section class="band deep" id="map">
+  <div class="inner">
+    <div class="kicker"><span class="no">the map</span><h2>Where capabilities come from</h2></div>
+    <p class="prose">Five sources feed a session. For each one there is exactly one persona-control lever — or none. The doctrine in one sentence: <strong>keep the uncontrollable layers nearly empty, and put everything else in plugins.</strong></p>
+    <div class="stack">
+      <div class="srow">
+        <div class="sname">Project <code>.claude/</code><span class="sub">committed to the repo</span></div>
+        <p class="swhat">Skills in <code>.claude/skills/</code>, MCP servers in repo-root <code>.mcp.json</code>. Loads for <em>every</em> persona by default.</p>
+        <p class="slever"><b>lever</b> Hide skills via <code>skillOverrides</code>; suppress servers via <code>disabledMcpjsonServers</code> — both in the persona file.</p>
+      </div>
+      <div class="srow">
+        <div class="sname">User <code>~/.claude/</code><span class="sub">this machine, all projects</span></div>
+        <p class="swhat">Loose skills (including anything <code>npx skills add -g</code> puts here), user-scope MCP servers, user-enabled plugins. The weakest isolation point — loose skills leak into all personas.</p>
+        <p class="slever"><b>lever (weak)</b> <code>skillOverrides</code> one name at a time. Real fix: migrate loose skills into plugins, keep this layer empty.</p>
+      </div>
+      <div class="srow hot">
+        <div class="sname">Plugins<span class="sub">★ the persona unit</span></div>
+        <p class="swhat">Skills + agents + hooks + bundled MCP, from a marketplace. All-or-nothing per plugin.</p>
+        <p class="slever"><b>lever (strong)</b> <code>enabledPlugins</code> in the persona file; <code>/plugin</code> + <code>/reload-plugins</code> mid-session.</p>
+      </div>
+      <div class="srow">
+        <div class="sname">MCP sidecars<span class="sub">launch-time injection</span></div>
+        <p class="swhat">Servers only: the shared base (chrome-devtools for every persona) + one persona sidecar (repo-local wins over global). Additive on top of inherited servers.</p>
+        <p class="slever"><b>lever (strong)</b> <code>--mcp-config</code> stacks them; append <code>--strict-mcp-config</code> to make them the only source.</p>
+      </div>
+      <div class="srow">
+        <div class="sname">Bundled<span class="sub">ships with Claude Code</span></div>
+        <p class="swhat">Built-in skills (<code>/code-review</code>, <code>/init</code>, …) and core tools. Present everywhere.</p>
+        <p class="slever"><b>no lever</b> Not persona-controllable; a same-named skill in any layer above shadows a bundled one.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── gotchas ── -->
+<section class="band" id="fine-print">
+  <div class="inner">
+    <div class="kicker"><span class="no">the fine print</span><h2>What does <em>not</em> isolate</h2></div>
+    <div class="gotchas">
+      <div class="gotcha">
+        <span class="tag trap">trap</span>
+        <h4>CLAUDE.md is persona-blind</h4>
+        <p>Repo and user CLAUDE.md load for <em>every</em> persona — keep them neutral. Per-persona instructions have their own home: a <code>&lt;persona&gt;.md</code> sidecar, appended to the system prompt at launch via <code>--append-system-prompt-file</code>.</p>
+      </div>
+      <div class="gotcha">
+        <span class="tag trap">trap</span>
+        <h4>Loose skills leak</h4>
+        <p>Anything in <code>~/.claude/skills/</code> appears in all personas by default. Hide per-persona via <code>skillOverrides</code> — workable — or package into plugins so the toggle is one key.</p>
+      </div>
+      <div class="gotcha">
+        <span class="tag trap">trap</span>
+        <h4>Sidecars add, they don't replace</h4>
+        <p>Every session still inherits user-level and repo <code>.mcp.json</code> servers on top of the sidecars. Suppress one via <code>disabledMcpjsonServers</code> in the persona file; for “only my sidecars”, pass <code>--strict-mcp-config</code> through <code>clau</code>.</p>
+      </div>
+      <div class="gotcha">
+        <span class="tag manual">manual</span>
+        <h4>Marketplace add is per-machine</h4>
+        <p>Skip the <code>/plugin marketplace add</code> and every <code>plugin@marketplace</code> key resolves to nothing — the persona silently degrades. <code>clau -h</code> catches this: it cross-checks every key against <code>~/.claude/plugins/marketplaces/</code> and flags the missing ones.</p>
+      </div>
+      <div class="gotcha">
+        <span class="tag manual">manual</span>
+        <h4>Plugin MCP is all-or-nothing</h4>
+        <p>A plugin's bundled servers can't be disabled without the whole plugin. If a persona needs skills-without-servers, split the MCP into its own tiny plugin.</p>
+      </div>
+      <div class="gotcha">
+        <span class="tag untested">untested</span>
+        <h4>One claim awaits live proof</h4>
+        <p><code>enabledPlugins</code> via <code>--settings</code> is documented but not yet exercised end-to-end here. Step 06 is the test; fallback is <code>/plugin</code> toggling per session.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── bootstrap prompt ── -->
+<section class="band deep" id="bootstrap">
+  <div class="inner">
+    <div class="kicker"><span class="no">the bootstrap</span><h2>One paste sets it up</h2></div>
+    <div class="step" style="border:none;padding-top:0">
+      <div>
+        <h3 style="margin-top:0">Don't build it by hand — hand this page to Claude</h3>
+        <div class="txt">
+          <p>Copy the prompt, paste it into a Claude Code session in the repo you want to try it in, and <strong>finish the last line</strong> — describe your personas, their skills and MCP servers in your own words. Claude fetches this guide and builds to your spec, autonomously.</p>
+          <p>The trial footprint is deliberately small: personas land <strong>in the repo</strong> (<code>.claude/personas/</code> — the guide's tier 2, the more standard starting point), and the only global touch is the <code>clau</code> function. No plugins repo, no dotfiles restructuring — move personas into dotfiles later if the system earns it.</p>
+          <div class="note">The prompt hardcodes this page's share URL. If the share link is ever revoked and re-minted, update the URL here — re-sharing changes it.</div>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">the prompt — copy, paste, then define your personas below it</span>Read this guide and set up the Claude Code persona system it
+describes, for this repository:
+https://teambrilliant.dev/share/lfqAGaoIYSo58n7xIyK40hYrMg/
+
+Set up:
+1. Persona settings JSONs in this repo's .claude/personas/
+   (repo-local personas — the guide's tier 2), one per persona
+   defined below, plus their MCP sidecars and optional
+   &lt;persona&gt;.md instruction files (appended to the system
+   prompt at launch). Servers shared by every persona go in
+   ~/.claude/personas/base.mcp.json. Env-var placeholders
+   only — never write literal secrets to disk.
+2. The guide's clau() zsh function in my shell config, if it
+   isn't there already.
+3. The guide's persona statusline: install statusline.sh to
+   ~/.claude/ and add the statusLine key to my user settings
+   (merge with any existing statusline rather than replacing
+   it), so sessions launched via clau show the active persona.
+
+Work autonomously — this is safe, standard configuration. Flag
+anything in the guide that conflicts with what you find on this
+machine or in this repo. Finish by running clau -h and showing
+me the result.
+
+My setup of personas defined below:</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="inner">
+    <div class="big" style="font-family:var(--serif);font-weight:600;font-size:clamp(1.5rem,3vw,2.2rem);letter-spacing:-.015em">One Claude Code, <em style="font-weight:300;color:var(--accent)">many hats.</em></div>
+    <div class="fine">
+      claude code · personas &amp; profiles · this page is the complete guide<br>
+      compiled 2026-07-21 · private · flags verified against claude --help
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('.step pre, .recipe pre').forEach(pre=>{
+    const wrap = pre.closest('.codewrap'); if(!wrap) return;
+    const b = document.createElement('button');
+    b.className='copy'; b.textContent='copy';
+    const flash = msg=>{ b.textContent=msg; setTimeout(()=>b.textContent='copy',1500); };
+    b.addEventListener('click',()=>{
+      const clone = pre.cloneNode(true);
+      clone.querySelectorAll('.path').forEach(p=>p.remove());
+      const text = clone.textContent.trim();
+      const fallback = ()=>{
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.cssText='position:fixed;top:0;left:0;opacity:0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        let ok = false; try{ ok = document.execCommand('copy'); }catch(e){}
+        ta.remove();
+        if(ok){ flash('copied ✓'); }
+        else{
+          const r = document.createRange(); r.selectNodeContents(pre);
+          const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+          flash('press ⌘C');
+        }
+      };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(()=>flash('copied ✓'), fallback);
+      } else fallback();
+    });
+    wrap.appendChild(b);
+  });
+</script>
+
+</body>
+</html>
