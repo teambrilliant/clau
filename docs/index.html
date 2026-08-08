@@ -325,12 +325,13 @@
       <a href="#shape"><span class="tno">02</span><span class="tk">the shape</span>Hats can live in a repo, too</a>
       <a href="#build"><span class="tno">03</span><span class="tk">the build</span>Six steps, all just files</a>
       <a href="#blast-radius"><span class="tno">04</span><span class="tk">the blast radius</span>Environments are personas</a>
-      <a href="#rhythm"><span class="tno">05</span><span class="tk">the rhythm</span>Everyday moves &amp; sandbox</a>
-      <a href="#recipe"><span class="tno">06</span><span class="tk">the recipe</span>One new hat, end to end</a>
-      <a href="#physics"><span class="tno">07</span><span class="tk">the physics</span>Why the persona file wins</a>
-      <a href="#map"><span class="tno">08</span><span class="tk">the map</span>Where capabilities come from</a>
-      <a href="#fine-print"><span class="tno">09</span><span class="tk">the fine print</span>What does not isolate</a>
-      <a href="#bootstrap"><span class="tno">10</span><span class="tk">the bootstrap</span>One paste sets it up</a>
+      <a href="#handoff"><span class="tno">05</span><span class="tk">the handoff</span>Plan in one hat, run in another</a>
+      <a href="#rhythm"><span class="tno">06</span><span class="tk">the rhythm</span>Everyday moves &amp; sandbox</a>
+      <a href="#recipe"><span class="tno">07</span><span class="tk">the recipe</span>One new hat, end to end</a>
+      <a href="#physics"><span class="tno">08</span><span class="tk">the physics</span>Why the persona file wins</a>
+      <a href="#map"><span class="tno">09</span><span class="tk">the map</span>Where capabilities come from</a>
+      <a href="#fine-print"><span class="tno">10</span><span class="tk">the fine print</span>What does not isolate</a>
+      <a href="#bootstrap"><span class="tno">11</span><span class="tk">the bootstrap</span>One paste sets it up</a>
     </div>
   </div>
 </nav>
@@ -765,6 +766,7 @@ $ op run --env-file=prod.env -- clau debug-production</pre>
         <div class="txt">
           <p><strong>Layered isolation:</strong> <code>prod-ro</code> uses an actual read-only database role — the credential itself is the boundary, the persona's deny-list is the second layer. <code>prod-rw</code> holds the write credential but gates every mutating tool behind approval.</p>
           <p><strong>Treat <code>prod-rw</code> like sudo:</strong> launched hermetically for one specific mutation, closed after. Make <code>prod-ro</code> the reflex; the asymmetry in friction is the feature.</p>
+          <p>Crossing the line mid-investigation doesn't mean re-explaining it — the conversation resumes into the bigger hat. See <a href="#handoff" style="color:var(--accent-deep)">the handoff</a>.</p>
         </div>
       </div>
       <div class="codewrap">
@@ -787,8 +789,127 @@ $ clau prod-rw --strict-mcp-config      <span class="c"># deliberate, short-live
   </div>
 </section>
 
+<!-- ── handoff ── -->
+<section class="band" id="handoff">
+  <div class="inner">
+    <div class="kicker"><span class="no">the handoff</span><h2>Plan in one hat, execute in another</h2></div>
+    <p class="prose">The sharpest use of personas isn't wearing two at once — it's wearing them <em>in sequence, over a single conversation</em>. Explore the codebase, argue the approach and write the plan in a hat that cannot reach production. Then hand the finished thread to a hat that can, without re-briefing it on anything. A conversation is a file on disk; capability is decided at launch. Two independent knobs — and <code>clau</code> is where you turn the second one.</p>
+
+    <div class="pipe">
+      <div class="pnode">
+        <div class="pdot"></div>
+        <h4>Explore</h4>
+        <span class="pm">clau planner</span>
+        <p>Read the repo, find the prior art, run the research skills. No prod sidecar, no write credential — the ability to break something isn't in the process at all.</p>
+      </div>
+      <div class="pnode">
+        <div class="pdot"></div>
+        <h4>Shape</h4>
+        <span class="pm">same session</span>
+        <p>Tradeoffs argued in-thread, plan written to <code>thoughts/plans/</code>. The reasoning — and the options you rejected — lives in the conversation, not in the file.</p>
+      </div>
+      <div class="pnode">
+        <div class="pdot"></div>
+        <h4>Exit</h4>
+        <span class="pm">ctrl-d</span>
+        <p>The thread is now a transcript on disk under <code>~/.claude/projects/</code>, keyed by directory. Nothing in it records which hat wrote it.</p>
+      </div>
+      <div class="pnode hot">
+        <div class="pdot"></div>
+        <h4>Relaunch</h4>
+        <span class="pm">clau builder -c</span>
+        <p>Same thread, new capability: write tools, staging sidecar, builder instructions. Add <code>--fork-session</code> and the plan thread survives untouched.</p>
+      </div>
+      <div class="pnode">
+        <div class="pdot"></div>
+        <h4>Execute</h4>
+        <span class="pm">⬢ builder</span>
+        <p>It opens holding the entire investigation and its own plan. You type “implement it”, not “here's what we decided and why”.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div>
+        <h3>History and capability are separate knobs</h3>
+        <div class="txt">
+          <p>Claude Code stores every conversation as a transcript keyed by <strong>working directory</strong> — <code>~/.claude/projects/&lt;cwd-slug&gt;/&lt;session-id&gt;.jsonl</code>. It has no concept of a persona, so any hat can pick up any thread ever started in that repo.</p>
+          <p><code>clau &lt;persona&gt;</code> decides capability; <code>-c</code> / <code>--resume</code> decides which conversation you land in. Neither constrains the other.</p>
+          <p>Everything after the persona name passes straight through to <code>claude</code> — the launcher appends your flags last — so the order is always persona first, flags after. That's also how plan mode stacks <em>on top of</em> an already read-only hat.</p>
+          <div class="note"><code>-c</code> means the most recent conversation <em>in this directory</em>. Run anything else in the repo in between — a quick question, a different persona — and it grabs that one instead. Use <code>--resume</code> when in doubt; <code>-r &lt;term&gt;</code> prefilters the picker.</div>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">two knobs</span><span class="c"># knob one — capability, fixed at launch</span>
+$ clau planner --permission-mode plan   <span class="c"># plan mode, on a no-prod hat</span>
+
+<span class="c"># …explore, argue, write thoughts/plans/rate-limit.md, ctrl-d</span>
+
+<span class="c"># knob two — which conversation you land in</span>
+$ clau builder -c                <span class="c"># most recent thread in this directory</span>
+$ clau builder --resume          <span class="c"># interactive picker</span>
+$ clau builder -r <span class="g">"rate limit"</span>   <span class="c"># picker, prefiltered by search term</span>
+$ clau builder -r 3f9c8b21-…     <span class="c"># straight to one session id</span>
+
+<span class="c"># session ids are just file names — newest first:</span>
+$ print -l ~/.claude/projects/${${PWD//\//-}//./-}/*.jsonl(Nom[1,3])</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div>
+        <h3>Fork, don't consume</h3>
+        <div class="txt">
+          <p><code>--fork-session</code>, used with <code>--resume</code> or <code>--continue</code>, writes the continuation under a <strong>new session id</strong> and leaves the original transcript intact. Without it, the resume consumes the thread: planning and execution become one growing conversation and the clean base is gone.</p>
+          <p>That turns the plan session into a <strong>reusable base</strong>. Execution goes sideways? Fork the same clean plan again instead of unwinding a polluted thread. Fork it twice and two hats work from one plan in parallel terminals — <code>builder</code> on the code, <code>prod-ro</code> checking live data — both holding the same reasoning, neither fighting over one transcript.</p>
+          <p><strong>The low-friction reflex is one line:</strong> exit the planning session, type <code>clau builder -c --fork-session</code>. No picker, no id, nothing retyped.</p>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">fork, don't consume</span><span class="c"># the reflex — one line, no picker, no session id</span>
+$ clau builder -c --fork-session
+
+<span class="c"># the plan thread stays clean and re-forkable:</span>
+$ clau builder -r 3f9c8b21-… --fork-session   <span class="c"># attempt one</span>
+$ clau builder -r 3f9c8b21-… --fork-session   <span class="c"># attempt two, same clean base</span>
+
+<span class="c"># …and the deliberate one, off that same plan:</span>
+$ clau prod-rw -r 3f9c8b21-… --fork-session --strict-mcp-config</pre>
+      </div>
+    </div>
+
+    <h3 style="font-family:var(--serif);font-weight:600;font-size:1.55rem;letter-spacing:-.015em;margin:3.4rem 0 .6rem">What crosses, what gets re-decided</h3>
+    <p class="prose">The transcript carries the thinking. Everything a persona controls is re-read from the new launch line — which is exactly why the relaunch is the boundary, and not a workaround for one.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>layer</th><th>across the relaunch</th></tr></thead>
+        <tbody>
+          <tr><td>conversation, files read, the plan and the reasoning behind it</td><td>carries — it <em>is</em> the transcript</td></tr>
+          <tr><td>plugins &amp; skills</td><td>re-decided — <code>enabledPlugins</code> in the new persona file</td></tr>
+          <tr><td>MCP servers</td><td>re-decided — the new sidecars. Old servers' output stays in history as plain text</td></tr>
+          <tr><td>permissions (allow / ask / deny)</td><td>re-decided — the new rules apply from the first tool call</td></tr>
+          <tr><td>appended <code>&lt;persona&gt;.md</code> instructions</td><td>re-decided — new file, still on top of the same repo CLAUDE.md</td></tr>
+          <tr><td><code>CLAU_PERSONA</code> &amp; statusline</td><td>re-decided — the strip reads <code>⬢ builder</code> from the new launch</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="gotchas">
+      <div class="gotcha">
+        <span class="tag trap">the trap</span>
+        <h4>Capability changes; context doesn't shrink</h4>
+        <p>The forked thread still holds everything the planning hat read, including any MCP output it pulled. A persona gates what a session <strong>can do</strong> — never what it already knows. If the next hat must not <em>see</em> something, don't resume: start clean and point it at the plan file.</p>
+      </div>
+      <div class="gotcha">
+        <span class="tag trap">the trap</span>
+        <h4>It remembers tools it no longer has</h4>
+        <p>A resumed conversation can reach for a skill or MCP server that belonged to the previous hat, and find nothing there. Open the new session with a concrete instruction naming the plan file, so it re-grounds on the artifact instead of on the memory of a tool that's gone.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ── everyday ── -->
-<section class="band" id="rhythm">
+<section class="band deep" id="rhythm">
   <div class="inner">
     <div class="kicker"><span class="no">the rhythm</span><h2>Everyday moves</h2></div>
     <p class="prose">The system earns its keep in the loop below: experiments stay quarantined in a sandbox plugin that only the <code>play</code> persona can see, and promotion is a one-line move — not a migration.</p>
@@ -851,9 +972,9 @@ $ git mv plugins/sandbox-skills/skills/polish-ui \
       </div>
       <div class="recipe">
         <h4>Resume in a different hat</h4>
-        <p>History and persona are independent: <code>--resume</code> restores the conversation, capability comes from the launch. Started in the wrong hat? Exit, relaunch, same transcript — new skills, MCP and prompt.</p>
-<pre>$ clau design -c         <span class="c"># continue last convo, design persona</span>
-$ clau product --resume  <span class="c"># pick any session, product persona</span></pre>
+        <p>Started in the wrong hat, or done planning and ready to build? Exit, relaunch — same transcript, new skills, MCP and permissions. Full flow in <a href="#handoff" style="color:var(--accent-deep)">the handoff</a>.</p>
+<pre>$ clau design -c                 <span class="c"># continue last convo, design persona</span>
+$ clau builder -c --fork-session <span class="c"># plan → build, plan thread kept</span></pre>
       </div>
       <div class="recipe">
         <h4>Add a whole new persona</h4>
@@ -874,7 +995,7 @@ $ clau product   <span class="c"># check /plugin + /mcp</span></pre>
 </section>
 
 <!-- ── recipe: one new hat, end to end ── -->
-<section class="band deep" id="recipe">
+<section class="band" id="recipe">
   <div class="inner">
     <div class="kicker"><span class="no">the recipe</span><h2>One new hat, end to end</h2></div>
     <div class="step" style="border:none;padding-top:0">
@@ -937,7 +1058,7 @@ $ clau researcher      <span class="c"># works in every repo immediately</span><
 </section>
 
 <!-- ── precedence ── -->
-<section class="band" id="physics">
+<section class="band deep" id="physics">
   <div class="inner">
     <div class="kicker"><span class="no">the physics</span><h2>Why the persona file wins</h2></div>
     <p class="prose">Settings merge by precedence. The persona slot sits above every file on disk — only live CLI flags and managed org policy outrank it.</p>
@@ -958,7 +1079,7 @@ $ clau researcher      <span class="c"># works in every repo immediately</span><
 </section>
 
 <!-- ── sources ── -->
-<section class="band deep" id="map">
+<section class="band" id="map">
   <div class="inner">
     <div class="kicker"><span class="no">the map</span><h2>Where capabilities come from</h2></div>
     <p class="prose">Five sources feed a session. For each one there is exactly one persona-control lever — or none. The doctrine in one sentence: <strong>keep the uncontrollable layers nearly empty, and put everything else in plugins.</strong></p>
@@ -993,7 +1114,7 @@ $ clau researcher      <span class="c"># works in every repo immediately</span><
 </section>
 
 <!-- ── gotchas ── -->
-<section class="band" id="fine-print">
+<section class="band deep" id="fine-print">
   <div class="inner">
     <div class="kicker"><span class="no">the fine print</span><h2>What does <em>not</em> isolate</h2></div>
     <div class="gotchas">
@@ -1032,7 +1153,7 @@ $ clau researcher      <span class="c"># works in every repo immediately</span><
 </section>
 
 <!-- ── bootstrap prompt ── -->
-<section class="band deep" id="bootstrap">
+<section class="band" id="bootstrap">
   <div class="inner">
     <div class="kicker"><span class="no">the bootstrap</span><h2>One paste sets it up</h2></div>
     <div class="step" style="border:none;padding-top:0">
