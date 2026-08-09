@@ -640,7 +640,7 @@ $ clau prod -c               <span class="c"># flags pass through to claude</spa
       <div class="gotcha">
         <span class="tag manual">note</span>
         <h4>Order inside a layer is fixed</h4>
-        <p>Layers apply root-first, leaf-last: <code>persona.md</code> files concatenate in that order, <code>.env</code> keys are overwritten by the deeper layer, and the first <code>color</code> found walking the chain wins. There's no way to re-order them other than moving a directory.</p>
+        <p>Layers apply root-first, leaf-last: <code>persona.md</code> files concatenate in that order, <code>.env</code> keys are overwritten by the deeper layer, and the deepest <code>color</code> wins. There's no way to re-order them other than moving a directory.</p>
       </div>
     </div>
   </div>
@@ -1356,7 +1356,7 @@ clau() {
         <h3>Show the hats in the statusline</h3>
         <div class="txt">
           <p>One script, one settings key — and every <code>clau</code> session displays which hats it's wearing, <strong>one badge each</strong>. The script reads the session JSON Claude Code pipes to it, plus <code>CLAU_BADGES</code>, which the launcher fills with one <code>colour⇥name</code> line per active hat.</p>
-          <p>The colour comes from a <code>color</code> file in the hat's directory — a raw ANSI SGR sequence, so <code>48;5;196;1;97</code> is bold white on red. Put it in a family's <code>base/</code> and every hat below inherits it; the first one found walking the chain wins. A hat with no <code>color</code> anywhere falls back to orange.</p>
+          <p>The colour comes from a <code>color</code> file in the hat's directory — a raw ANSI SGR sequence, so <code>48;5;196;1;97</code> is bold white on red. Put it in a family's <code>base/</code> and every hat below inherits it; the <strong>most specific</strong> one wins, so a leaf can always override its family. A hat with no <code>color</code> anywhere falls back to orange.</p>
           <p>Reach for it where being in the wrong session is expensive: production red, staging amber, sandbox green. Bare <code>claude</code> sessions degrade gracefully — no variable, no badge, just model and directory.</p>
         </div>
       </div>
@@ -1985,6 +1985,28 @@ $ clau -h
   researcher
   marketplace my-marketplace ✓
 $ clau researcher      <span class="c"># works in every repo immediately</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div>
+        <h3>Or hand the whole thing to a skill</h3>
+        <div class="txt">
+          <p>The steps above are what you'd do by hand. <code>skills/clau-persona</code> is the same knowledge packaged for Claude Code: symlink it into <code>~/.claude/skills/</code> and ask for “a read-only prod hat for this repo”.</p>
+          <p>It's written to do the parts that are easy to get wrong — read the repo's existing <code>.mcp.json</code> and settings before inventing servers, check that every <code>plugin@marketplace</code> key resolves on this machine, decide which <strong>layer</strong> a thing belongs in rather than copying it into each hat, and pick the defences for an environment hat (read-only credential first, deny rules second, a <code>persona.md</code> that says investigate-don't-fix, a loud colour).</p>
+          <p><strong>It never touches a secret.</strong> It writes <code>${VAR}</code> placeholders and then tells you the <code>clau-secret set</code> commands to run yourself — it won't ask for a value, read one back, or print one.</p>
+          <div class="note">Skills in <code>~/.claude/skills/</code> are persona-blind, so this one loads in every hat. That's usually what you want for an authoring skill; hide it where it isn't with <code>"skillOverrides": { "clau-persona": "off" }</code>.</div>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">install once</span>$ ln -s "$PWD/skills/clau-persona" ~/.claude/skills/clau-persona
+
+<span class="path">then just ask</span>&gt; I need a read-only production hat for this repo — same debug
+&gt; skills as staging, but it must not be able to write anything.
+
+<span class="c"># it reads the repo, reads clau --json, proposes the layer split,
+# writes the files, and hands back the clau-secret commands + a
+# clau &lt;hat&gt; --version dry run to prove it.</span></pre>
       </div>
     </div>
   </div>

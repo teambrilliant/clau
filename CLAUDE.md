@@ -21,6 +21,10 @@ repos — never commit them here.
 - `clau --json` is a **public contract**: `raycast/src/lib/personas.ts` types
   it field for field. Changing a key means changing that type in the same
   commit, and the JSON path must never launch anything.
+- `skills/clau-persona/SKILL.md` documents the same mechanics as the guide —
+  layer resolution, merge rules, secret handling. A behaviour change lands in
+  both, and the skill must stay path-agnostic (no `~/.zshrc.d`, no personal
+  tree; it reads `clau -h` / `clau --json` instead).
 - `raycast/` is a real Raycast extension — `npx tsc --noEmit`, `npx eslint src`
   and `npx prettier --check src` must all pass before shipping. It resolves the
   zsh files via `$CLAU_HOME` → `~/.zshrc.d` → `~/.claude` → `~/.config/clau`;

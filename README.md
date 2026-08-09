@@ -79,6 +79,14 @@ Requires `zsh`, `jq`, `rg`, and `security` (macOS) for the keychain layer.
 Or don't build it by hand: the guide's **bootstrap section** has a copy-paste
 prompt that makes Claude Code set everything up for the repo you're in.
 
+## Skill
+
+[`skills/clau-persona`](skills/clau-persona/) teaches Claude Code to author hats
+— where they live, which layer a thing belongs in, the merge rules that bite,
+and how to verify one without leaking a secret. Symlink it into
+`~/.claude/skills/` and ask for "a read-only prod persona for this repo". See
+[`skills/README.md`](skills/README.md).
+
 ## Raycast
 
 [`raycast/`](raycast/) is a Raycast extension over the same tree: pick a folder,
