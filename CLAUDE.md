@@ -15,8 +15,16 @@ repos — never commit them here.
   `PATH`; exercise: `-h` list, single launch, leaf-name shorthand, layer merge,
   repo override, persona.md concatenation, scratch + `.scratch` symlink,
   `${VAR}`/`.env` resolution, multi-persona merge, unknown + ambiguous names,
-  statusline badges, `clau-mcp` add/list/rm). Never exercise the bare-`clau`
-  picker in a non-interactive test — it blocks on the TTY.
+  statusline badges, `clau-mcp` add/list/rm, `clau --json` shape). Never
+  exercise the bare-`clau` picker in a non-interactive test — it blocks on the
+  TTY.
+- `clau --json` is a **public contract**: `raycast/src/lib/personas.ts` types
+  it field for field. Changing a key means changing that type in the same
+  commit, and the JSON path must never launch anything.
+- `raycast/` is a real Raycast extension — `npx tsc --noEmit`, `npx eslint src`
+  and `npx prettier --check src` must all pass before shipping. It resolves the
+  zsh files via `$CLAU_HOME` → `~/.zshrc.d` → `~/.claude` → `~/.config/clau`;
+  never hardcode a personal path there.
 - Published to Dossier as `docs/claude-code-personas` (same URL across versions):
   `bun <tap-skills dossier-publish>/scripts/dossier.ts republish docs/claude-code-personas docs/index.html`
   The bootstrap prompt inside the page hardcodes the public share URL — if the

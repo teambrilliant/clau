@@ -180,6 +180,49 @@ _clau_rows() {
   done < <(_clau_scan)
 }
 
+_clau_roots() {
+  local pdir="$HOME/.claude/personas" d="$PWD" rdir=""
+  while [[ -n "$d" ]]; do
+    [[ -d "$d/clau/personas" ]] && { rdir="$d/clau/personas"; break }
+    [[ -d "$d/.claude/personas" ]] && { rdir="$d/.claude/personas"; break }
+    d="${d:h}"; [[ "$d" == "/" ]] && break
+  done
+  [[ "$rdir" == "$pdir" || -z "$rdir" ]] && rdir="/nonexistent/clau/personas"
+  print -r -- "$rdir"
+  print -r -- "$pdir"
+}
+
+_clau_color() {
+  local n="$1" rdir pdir acc seg out=""
+  local -a roots plist
+  roots=(${(f)"$(_clau_roots)"})
+  rdir="$roots[1]"; pdir="$roots[2]"
+  plist=(base); acc=""
+  for seg in ${(s:/:)n}; do
+    [[ -n "$acc" ]] && acc="$acc/$seg" || acc="$seg"
+    [[ "$acc" == "$n" ]] || plist+=("$acc/base")
+  done
+  plist+=("$n")
+  local lp dd
+  for lp in $plist; do
+    for dd in "$rdir/$lp" "$pdir/$lp"; do
+      [[ -f "$dd/color" ]] || continue
+      out=$(rg -v '^\s*(#|$)' "$dd/color" 2>/dev/null | head -1 | tr -d '[:space:]')
+      break
+    done
+  done
+  print -r -- "$out"
+}
+
+_clau_scratch_dir() {
+  local pdir="$HOME/.claude/personas"
+  local scratch_root="${CLAU_SCRATCH_ROOT:-${${pdir:A}:h}/scratch}"
+  local gitcommon proj
+  gitcommon=$(git rev-parse --git-common-dir 2>/dev/null)
+  if [[ -n "$gitcommon" ]]; then proj="${${${gitcommon:A}:h}:t}"; else proj="${PWD:t}"; fi
+  print -r -- "$scratch_root/$proj"
+}
+
 _clau_pick_personas() {
   local -a rows; rows=(${(f)"$(_clau_rows)"})
   (( ${#rows} )) || { print -u2 "clau: no personas found"; return 1 }
@@ -201,6 +244,24 @@ clau() {
   while IFS=$'\t' read -r rel dent; do pmap[$rel]="$dent"; done < <(_clau_scan)
 
   local -a rows; rows=(${(f)"$(_clau_rows)"})
+
+  if [[ "$1" == "--json" ]]; then
+    local jrel jdir jgroup
+    {
+      while IFS=$'\t' read -r jrel jdir; do
+        [[ "$jrel" == */* ]] && jgroup="${jrel%/*}" || jgroup=""
+        jq -n \
+          --arg path "$jrel" --arg name "${jrel:t}" --arg dir "$jdir" \
+          --arg group "$jgroup" --arg color "$(_clau_color "$jrel")" \
+          --argjson mcp "$([[ -f "$jdir/mcp.json" ]] && print true || print false)" \
+          --argjson env "$([[ -f "$jdir/.env" ]] && print true || print false)" \
+          --argjson prompt "$([[ -f "$jdir/persona.md" ]] && print true || print false)" \
+          '{path:$path,name:$name,dir:$dir,group:$group,color:$color,hasMcp:$mcp,hasEnv:$env,hasPrompt:$prompt}'
+      done < <(_clau_scan)
+    } | jq -s --arg cwd "$PWD" --arg local "$rdir" --arg global "$pdir" --arg scratch "$(_clau_scratch_dir)" \
+      '{cwd:$cwd, roots:{local:$local, global:$global}, scratch:$scratch, personas:.}'
+    return 0
+  fi
 
   if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     print "clau — persona launcher"

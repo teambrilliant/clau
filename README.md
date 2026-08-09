@@ -42,6 +42,7 @@ claude                  → plain claude, untouched — clau is only for hats
 | command       | what it does                                                       |
 |---------------|--------------------------------------------------------------------|
 | `clau`        | launch one or more hats                                             |
+| `clau --json` | the resolved tree as JSON — what the Raycast app reads              |
 | `clau-mcp`    | add / remove / list MCP servers inside a hat, without editing JSON   |
 | `clau-secret` | keychain store behind the `${VAR}` placeholders — see [SECRETS.md](SECRETS.md) |
 
@@ -77,6 +78,13 @@ Requires `zsh`, `jq`, `rg`, and `security` (macOS) for the keychain layer.
 
 Or don't build it by hand: the guide's **bootstrap section** has a copy-paste
 prompt that makes Claude Code set everything up for the repo you're in.
+
+## Raycast
+
+[`raycast/`](raycast/) is a Raycast extension over the same tree: pick a folder,
+pick hats, launch — plus resuming a past session in a different hat, adding an
+MCP server, and storing a secret. It shells out to `clau --json`, so there is no
+second source of truth. See [`raycast/README.md`](raycast/README.md).
 
 ## Scratch
 

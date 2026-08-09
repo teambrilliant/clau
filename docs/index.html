@@ -328,7 +328,7 @@
       <a href="#blast-radius"><span class="tno">05</span><span class="tk">the blast radius</span>Environments are personas</a>
       <a href="#vault"><span class="tno">06</span><span class="tk">the vault</span>Secrets never touch disk</a>
       <a href="#handoff"><span class="tno">07</span><span class="tk">the handoff</span>Plan in one hat, run in another</a>
-      <a href="#rhythm"><span class="tno">08</span><span class="tk">the rhythm</span>Everyday moves &amp; sandbox</a>
+      <a href="#rhythm"><span class="tno">08</span><span class="tk">the rhythm</span>Everyday moves, sandbox, Raycast</a>
       <a href="#recipe"><span class="tno">09</span><span class="tk">the recipe</span>One new hat, end to end</a>
       <a href="#physics"><span class="tno">10</span><span class="tk">the physics</span>Why the persona file wins</a>
       <a href="#map"><span class="tno">11</span><span class="tk">the map</span>Where capabilities come from</a>
@@ -883,6 +883,7 @@ $ clau-mcp rm product exa</pre>
           <p><strong><code>clau</code></strong> → the picker over the whole tree: type to filter, <kbd>space</kbd> to toggle, <kbd>enter</kbd> to launch what's toggled — or the highlighted row if nothing is. It reads the same directories a launch reads, so the list can't drift from reality: it <em>is</em> the reality check. <code>clau -h</code> prints the plain list plus a marketplace cross-check against <code>~/.claude/plugins/marketplaces/</code>.</p>
           <p><strong><code>clau &lt;hat&gt;…</code></strong> → collects the layer chain for every named hat, merges settings with <code>jq</code>, stacks the <code>mcp.json</code> files, concatenates the <code>persona.md</code> files, resolves <code>${VAR}</code> placeholders, creates the scratch directory, and execs <code>claude</code>. Unknown or ambiguous names error and name the candidates. Anything after the names passes through: <code>clau designer -c</code> continues the last designer conversation.</p>
           <p>The session gets <code>CLAU_PERSONA</code>, <code>CLAU_BADGES</code> and <code>CLAU_SCRATCH</code> — child process only, so your shell stays clean. Want plain <code>claude</code>? Type <code>claude</code>. <code>clau</code> is only for hats.</p>
+          <p><strong><code>clau --json</code></strong> → the same resolved tree as data: every hat with its directory, group, inherited colour, and whether it carries an <code>mcp.json</code>, <code>.env</code> or <code>persona.md</code>, plus the roots and the scratch path for this folder. It launches nothing. That's the seam any other front-end hangs off — the <a href="#rhythm" style="color:var(--accent-deep)">Raycast app</a> is one.</p>
           <div class="note">Needs <code>zsh</code>, <code>jq</code> and <code>rg</code>. The keychain lookups use macOS <code>security</code>; on Linux swap those two calls for <code>secret-tool</code> or <code>pass</code>.</div>
         </div>
       </div>
@@ -1069,6 +1070,49 @@ _clau_rows() {
   done &lt; &lt;(_clau_scan)
 }
 
+_clau_roots() {
+  local pdir="$HOME/.claude/personas" d="$PWD" rdir=""
+  while [[ -n "$d" ]]; do
+    [[ -d "$d/clau/personas" ]] &amp;&amp; { rdir="$d/clau/personas"; break }
+    [[ -d "$d/.claude/personas" ]] &amp;&amp; { rdir="$d/.claude/personas"; break }
+    d="${d:h}"; [[ "$d" == "/" ]] &amp;&amp; break
+  done
+  [[ "$rdir" == "$pdir" || -z "$rdir" ]] &amp;&amp; rdir="/nonexistent/clau/personas"
+  print -r -- "$rdir"
+  print -r -- "$pdir"
+}
+
+_clau_color() {
+  local n="$1" rdir pdir acc seg out=""
+  local -a roots plist
+  roots=(${(f)"$(_clau_roots)"})
+  rdir="$roots[1]"; pdir="$roots[2]"
+  plist=(base); acc=""
+  for seg in ${(s:/:)n}; do
+    [[ -n "$acc" ]] &amp;&amp; acc="$acc/$seg" || acc="$seg"
+    [[ "$acc" == "$n" ]] || plist+=("$acc/base")
+  done
+  plist+=("$n")
+  local lp dd
+  for lp in $plist; do
+    for dd in "$rdir/$lp" "$pdir/$lp"; do
+      [[ -f "$dd/color" ]] || continue
+      out=$(rg -v '^\s*(#|$)' "$dd/color" 2&gt;/dev/null | head -1 | tr -d '[:space:]')
+      break
+    done
+  done
+  print -r -- "$out"
+}
+
+_clau_scratch_dir() {
+  local pdir="$HOME/.claude/personas"
+  local scratch_root="${CLAU_SCRATCH_ROOT:-${${pdir:A}:h}/scratch}"
+  local gitcommon proj
+  gitcommon=$(git rev-parse --git-common-dir 2&gt;/dev/null)
+  if [[ -n "$gitcommon" ]]; then proj="${${${gitcommon:A}:h}:t}"; else proj="${PWD:t}"; fi
+  print -r -- "$scratch_root/$proj"
+}
+
 _clau_pick_personas() {
   local -a rows; rows=(${(f)"$(_clau_rows)"})
   (( ${#rows} )) || { print -u2 "clau: no personas found"; return 1 }
@@ -1090,6 +1134,24 @@ clau() {
   while IFS=$'\t' read -r rel dent; do pmap[$rel]="$dent"; done &lt; &lt;(_clau_scan)
 
   local -a rows; rows=(${(f)"$(_clau_rows)"})
+
+  if [[ "$1" == "--json" ]]; then
+    local jrel jdir jgroup
+    {
+      while IFS=$'\t' read -r jrel jdir; do
+        [[ "$jrel" == */* ]] &amp;&amp; jgroup="${jrel%/*}" || jgroup=""
+        jq -n \
+          --arg path "$jrel" --arg name "${jrel:t}" --arg dir "$jdir" \
+          --arg group "$jgroup" --arg color "$(_clau_color "$jrel")" \
+          --argjson mcp "$([[ -f "$jdir/mcp.json" ]] &amp;&amp; print true || print false)" \
+          --argjson env "$([[ -f "$jdir/.env" ]] &amp;&amp; print true || print false)" \
+          --argjson prompt "$([[ -f "$jdir/persona.md" ]] &amp;&amp; print true || print false)" \
+          '{path:$path,name:$name,dir:$dir,group:$group,color:$color,hasMcp:$mcp,hasEnv:$env,hasPrompt:$prompt}'
+      done &lt; &lt;(_clau_scan)
+    } | jq -s --arg cwd "$PWD" --arg local "$rdir" --arg global "$pdir" --arg scratch "$(_clau_scratch_dir)" \
+      '{cwd:$cwd, roots:{local:$local, global:$global}, scratch:$scratch, personas:.}'
+    return 0
+  fi
 
   if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     print "clau — persona launcher"
@@ -1775,6 +1837,43 @@ $ git mv plugins/sandbox-skills/skills/polish-ui \
          plugins/ui-skills/skills/polish-ui</pre>
       </div>
     </div>
+    <div class="step">
+      <div>
+        <h3>Launching without a terminal in front of you</h3>
+        <div class="txt">
+          <p>The command line is the wrong surface for one of these moves: you're not in a terminal, you're not in the right folder, and the thing you want is “that repo, that hat, now”. So <code>clau --json</code> exists — the resolved tree as data, launching nothing — and a <strong>Raycast extension</strong> sits on top of it.</p>
+          <p>Five commands: pick a folder then hats and launch · resume a past session <em>in a different hat</em> · add an MCP server to several hats at once · store a keychain secret · choose the terminal it opens in. The folder list is merged from <code>zoxide</code>, VS Code's recent workspaces and <code>~/.claude.json</code>, so the repo you were just in is the first row.</p>
+          <p>It reads the same directories the shell function reads and shells out to the same <code>clau</code>, so repo-local hats, <code>base/</code> inheritance and colours all behave identically. <strong>There is no second source of truth</strong> — which is the only reason a second front-end is safe to have.</p>
+          <div class="note">The resume command offers <code>--resume</code> and <code>--resume --fork-session</code> side by side, which makes <a href="#handoff" style="color:var(--accent-deep)">the handoff</a> a two-keystroke move: find the plan thread, pick the builder hat, fork.</div>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">the seam — what the app reads</span>$ clau --json | jq
+{
+  <span class="a">"cwd"</span>: <span class="g">"/Users/you/code/emma-repo"</span>,
+  <span class="a">"roots"</span>: {
+    <span class="a">"local"</span>:  <span class="g">"/Users/you/code/emma-repo/clau/personas"</span>,
+    <span class="a">"global"</span>: <span class="g">"/Users/you/.claude/personas"</span>
+  },
+  <span class="a">"scratch"</span>: <span class="g">"/Users/you/.claude/scratch/emma-repo"</span>,
+  <span class="a">"personas"</span>: [
+    {
+      <span class="a">"path"</span>: <span class="g">"acme/prod"</span>,  <span class="a">"name"</span>: <span class="g">"prod"</span>,
+      <span class="a">"group"</span>: <span class="g">"acme"</span>,
+      <span class="a">"dir"</span>: <span class="g">"/Users/you/.claude/personas/acme/prod"</span>,
+      <span class="a">"color"</span>: <span class="g">"48;5;196;1;97"</span>,
+      <span class="a">"hasMcp"</span>: <span class="g">true</span>, <span class="a">"hasEnv"</span>: <span class="g">true</span>, <span class="a">"hasPrompt"</span>: <span class="g">false</span>
+    }
+  ]
+}
+
+<span class="path">install the extension</span>$ cd raycast &amp;&amp; npm install &amp;&amp; npm run dev
+
+<span class="c"># finds the zsh files via $CLAU_HOME → ~/.zshrc.d →
+# ~/.claude → ~/.config/clau — first hit wins.</span></pre>
+      </div>
+    </div>
+
     <div class="recipes">
       <div class="recipe">
         <h4>Flip a plugin mid-session</h4>

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "clau",
+  "title": "Clau",
+  "description": "Launch Claude Code personas in a terminal",
+  "icon": "icon.png",
+  "author": "nik",
+  "categories": ["Developer Tools"],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "clau",
+      "title": "Clau",
+      "subtitle": "Launch persona",
+      "description": "Pick a folder and personas, then launch Claude Code",
+      "mode": "view"
+    },
+    {
+      "name": "config",
+      "title": "Clau Config",
+      "subtitle": "Terminal app",
+      "description": "Choose which terminal app clau launches in",
+      "mode": "view"
+    },
+    {
+      "name": "resume",
+      "title": "Clau Resume",
+      "subtitle": "Past session",
+      "description": "Resume a past Claude Code session wearing a persona",
+      "mode": "view"
+    },
+    {
+      "name": "secret",
+      "title": "Clau Secret",
+      "subtitle": "Keychain",
+      "description": "Store a persona secret in the login keychain",
+      "mode": "view"
+    },
+    {
+      "name": "mcp",
+      "title": "Clau MCP Add",
+      "subtitle": "MCP server",
+      "description": "Add an MCP server to one or more personas",
+      "mode": "view"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.104.24",
+    "@raycast/utils": "^2.3.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.2.0",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "lint": "ray lint",
+    "fix-lint": "ray lint --fix"
+  }
+}
