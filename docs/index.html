@@ -973,8 +973,8 @@ $ git mv plugins/sandbox-skills/skills/polish-ui \
       <div class="recipe">
         <h4>Resume in a different hat</h4>
         <p>Started in the wrong hat, or done planning and ready to build? Exit, relaunch — same transcript, new skills, MCP and permissions. Full flow in <a href="#handoff" style="color:var(--accent-deep)">the handoff</a>.</p>
-<pre>$ clau design -c                 <span class="c"># continue last convo, design persona</span>
-$ clau builder -c --fork-session <span class="c"># plan → build, plan thread kept</span></pre>
+<pre>$ clau design -c
+$ clau builder -c --fork-session</pre>
       </div>
       <div class="recipe">
         <h4>Add a whole new persona</h4>
@@ -1156,11 +1156,57 @@ $ clau researcher      <span class="c"># works in every repo immediately</span><
 <section class="band" id="bootstrap">
   <div class="inner">
     <div class="kicker"><span class="no">the bootstrap</span><h2>One paste sets it up</h2></div>
+
     <div class="step" style="border:none;padding-top:0">
       <div>
-        <h3 style="margin-top:0">Don't build it by hand — hand this page to Claude</h3>
+        <h3 style="margin-top:0">Don't know your hats yet? Optional first paste</h3>
         <div class="txt">
-          <p>Copy the prompt, paste it into a Claude Code session in the repo you want to try it in, and <strong>finish the last line</strong> — describe your personas, their skills and MCP servers in your own words. Claude fetches this guide and builds to your spec, autonomously.</p>
+          <p>The hard part of the build prompt below is its last line — <em>describe your personas</em>. Most people can't, until they see what this particular app actually calls for. So don't guess: point Claude at the repo and make it propose the split, grounded in what's really there.</p>
+          <p>It comes back with <strong>three variations at different granularities</strong> — two hats, one per workflow phase, one per surface — each with the tradeoff spelled out, plus a recommendation. Pick one, edit it, and it becomes the input to the build prompt.</p>
+          <div class="note">It stops before writing anything. The proposal is a message in the session, not files on disk — argue with it first.</div>
+        </div>
+      </div>
+      <div class="codewrap">
+<pre><span class="path">the explore prompt — paste into a session in the app's repo</span>Read this guide, then look at THIS repository and propose how
+to split the work here into personas:
+https://teambrilliant.dev/share/lfqAGaoIYSo58n7xIyK40hYrMg/
+
+1. Inventory before proposing. The stack and its scripts
+   (package.json / pyproject / go.mod — dev, test, migrate),
+   services (docker-compose, .env.example), deploy and infra
+   targets, CI workflows, e2e setup, monorepo layout, and any
+   existing .claude/ or .mcp.json. Then what this machine has:
+   /plugin marketplace list, ~/.claude/plugins/,
+   ~/.claude/settings.json. Name env variables, never echo
+   their values.
+
+2. Propose THREE variations, deliberately different in
+   granularity — e.g. two hats (build + prod-ro) · one hat per
+   workflow phase (plan → build → review) · one hat per surface
+   (frontend / backend / data / infra). For each variation give
+   me: the persona list, what each hat can and cannot touch,
+   its MCP servers and permission rules, and what it costs me
+   in switching friction.
+
+3. Ground every hat in something you actually found — name the
+   file, script or server. If a hat isn't justified by this
+   repo, say so and drop it. Never invent MCP servers that
+   aren't installed here; mark anything I'd have to install
+   first, and anything already global that should move into a
+   persona.
+
+4. Recommend one. Say what would make me switch to another
+   later, and which hat to add first when this repo grows.
+
+Then stop and wait — I'll pick before you write any files.</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div>
+        <h3>Don't build it by hand — hand this page to Claude</h3>
+        <div class="txt">
+          <p>Copy the prompt, paste it into a Claude Code session in the repo you want to try it in, and <strong>finish the last line</strong> — describe your personas, their skills and MCP servers in your own words, or paste the variation you just picked above. Claude fetches this guide and builds to your spec, autonomously.</p>
           <p>The trial footprint is deliberately small: personas land <strong>in the repo</strong> (<code>.claude/personas/</code> — the guide's tier 2, the more standard starting point), and the only global touch is the <code>clau</code> function. No plugins repo, no dotfiles restructuring — move personas into dotfiles later if the system earns it.</p>
           <div class="note">The prompt hardcodes this page's share URL. If the share link is ever revoked and re-minted, update the URL here — re-sharing changes it.</div>
         </div>
