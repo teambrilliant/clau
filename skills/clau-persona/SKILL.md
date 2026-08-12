@@ -107,6 +107,11 @@ wins.
   selected `mcp.json` files**, and only when the variable isn't already set in
   the shell. A `${VAR}` written anywhere else is never resolved and never
   warned about — use `.env` for those.
+- **A stored secret can be present and still wrong.** Values written by older
+  `clau-secret` versions were cut at 128 characters and reported as stored, so
+  `check` says `✓ exists` while the server fails to connect. When an MCP server
+  with a `${VAR}` won't connect, have the user run `clau-secret audit` — a
+  length of exactly 128 is the fingerprint, and the fix is to `set` it again.
 - **`persona.md` files concatenate**, outermost first.
 - **`skillOverrides`** hides loose skills per persona: `"off"`,
   `"user-invocable-only"`, `"name-only"`.
