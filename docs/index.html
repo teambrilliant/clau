@@ -1560,12 +1560,17 @@ $ clau prod-ro prod-rw                  <span class="c">✗</span></pre>
       <div class="codewrap">
 <pre><span class="path">store it once</span>$ clau-secret set PROD_DB_URL_RO
 paste the value for PROD_DB_URL_RO, then press enter (input is hidden):
-stored clau:PROD_DB_URL_RO — every read asks for your approval
+<span class="c"># macOS asks you to approve one read — that read is the verification</span>
+stored clau:PROD_DB_URL_RO — 163 chars, verified · every read asks for your approval
 
 $ clau-secret set -q EXA_API_KEY   <span class="c"># low-stakes: never prompt on read</span>
 $ clau-secret list                 <span class="c"># the only inventory that exists</span>
-$ clau-secret check PROD_DB_URL_RO
+$ clau-secret check PROD_DB_URL_RO <span class="c"># existence only — never prompts</span>
 clau:PROD_DB_URL_RO ✓ exists
+
+$ clau-secret audit                <span class="c"># stored lengths · flags old truncated values</span>
+  clau:EXA_API_KEY                      41 chars  ok
+  clau:PROD_DB_URL_RO                  163 chars  ok
 
 <span class="path">reference it, never write it</span>{ <span class="a">"env"</span>: { <span class="a">"DATABASE_URL"</span>: <span class="g">"${PROD_DB_URL_RO}"</span> } }
 
@@ -1585,9 +1590,10 @@ $ print $PROD_DB_URL_RO      <span class="c"># empty — it only ever existed in
       <div>
         <h3>The helper</h3>
         <div class="txt">
-          <p>Never pass a value as an argument — the prompt keeps it out of <code>argv</code>, out of <code>ps</code>, and out of your shell history. Updating is just <code>set</code> again with the same name.</p>
-          <p>By default the keychain item's ACL is locked, so macOS asks for approval on <em>every</em> read. That's the real gate. Tick “Always Allow” in the dialog, or store with <code>-q</code>, when a secret is low-stakes enough that the prompt is only friction.</p>
-          <div class="note">These items live in the local login keychain: they never appear in Passwords.app, never sync to another device, and macOS 26 ships no keychain GUI. <code>clau-secret list</code> is the only inventory you have — which is also why the naming convention <code>clau:NAME</code> matters.</div>
+          <p><code>set</code> reads the value itself, hidden, hands it to <code>security</code>, then <strong>reads it straight back and compares</strong>. The success line appears only once the stored bytes match what you pasted, and it tells you how many there are. A mismatch, or a read-back you decline, is an error with a non-zero exit — never a quiet “stored”. Updating is just <code>set</code> again with the same name.</p>
+          <p>Never pass a value as an argument to <code>clau-secret</code>; that puts it in your shell history. It does spend one call inside <code>security</code>'s own <code>argv</code>, briefly visible to <code>ps</code> for the same user. That is the deliberate price of not using <code>security</code>'s built-in prompt, whose input buffer silently cut every value at 128 bytes — a corrupt credential you find out about days later is the worse trade.</p>
+          <p>By default the keychain item's ACL is locked, so macOS asks for approval on <em>every</em> read — including the verification read right after you store. That's the real gate. Tick “Always Allow”, or store with <code>-q</code>, when a secret is low-stakes enough that the prompt is only friction.</p>
+          <div class="note">These items live in the local login keychain: they never appear in Passwords.app, never sync to another device, and macOS 26 ships no keychain GUI. <code>clau-secret list</code> is the only inventory you have — which is also why the naming convention <code>clau:NAME</code> matters — and <code>clau-secret audit</code> is the only way to see how long each stored value actually is.</div>
         </div>
       </div>
       <div class="codewrap">
@@ -1602,14 +1608,33 @@ $ print $PROD_DB_URL_RO      <span class="c"># empty — it only ever existed in
       [[ -n "$name" ]] || { print -u2 "usage: clau-secret set [-q] &lt;NAME&gt;"; return 1 }
       local -a acl
       (( silent )) || acl=(-T '')
-      print "paste the value for $name, then press enter (input is hidden):"
-      security add-generic-password -U -a "$USER" -s "clau:$name" -l "clau:$name" \
-        -D "clau secret" -j "used by clau personas via mcp.json lookup" "${acl[@]}" -w || return 1
-      if (( silent )); then
-        print "stored clau:$name — readable without a prompt"
-      else
-        print "stored clau:$name — every read asks for your approval"
+      local value readback rc
+      print -n "paste the value for $name, then press enter (input is hidden): "
+      IFS= read -rs value; rc=$?
+      print ""
+      (( rc == 0 )) || { value=""; print -u2 "clau: no value read — nothing stored"; return 1 }
+      [[ -n "$value" ]] || { print -u2 "clau: empty value — nothing stored"; return 1 }
+      if ! security add-generic-password -U -a "$USER" -s "clau:$name" -l "clau:$name" \
+        -D "clau secret" -j "used by clau personas via mcp.json lookup" "${acl[@]}" -w "$value"; then
+        print -u2 "clau: failed to store clau:$name"; value=""; return 1
       fi
+      readback=$(security find-generic-password -a "$USER" -s "clau:$name" -w 2&gt;/dev/null); rc=$?
+      if (( rc != 0 )); then
+        print -u2 "clau: stored clau:$name — ${#value} chars, UNVERIFIED (keychain read not approved)"
+        print -u2 "      run: clau-secret audit   to confirm the stored length"
+        value=""; readback=""; return 1
+      fi
+      if [[ "$readback" != "$value" ]]; then
+        print -u2 "clau: clau:$name is CORRUPT — wrote ${#value} chars, keychain holds ${#readback}"
+        print -u2 "      the value was not stored intact; do not rely on it"
+        value=""; readback=""; return 1
+      fi
+      if (( silent )); then
+        print "stored clau:$name — ${#value} chars, verified · readable without a prompt"
+      else
+        print "stored clau:$name — ${#value} chars, verified · every read asks for your approval"
+      fi
+      value=""; readback=""
       ;;
     get)
       [[ -n "$name" ]] || { print -u2 "usage: clau-secret get &lt;NAME&gt;"; return 1 }
@@ -1623,6 +1648,26 @@ $ print $PROD_DB_URL_RO      <span class="c"># empty — it only ever existed in
         print "clau:$name ✗ missing"; return 1
       fi
       ;;
+    audit)
+      local sname val bad=0 seen=0
+      for sname in ${(f)"$(clau-secret list)"}; do
+        [[ -n "$sname" ]] || continue
+        seen=1
+        if val=$(security find-generic-password -a "$USER" -s "$sname" -w 2&gt;/dev/null); then
+          if (( ${#val} == 128 )); then
+            printf '  %-34s %5d chars  ⚠ likely truncated — clau-secret set %s\n' "$sname" ${#val} "${sname#clau:}"
+            bad=1
+          else
+            printf '  %-34s %5d chars  ok\n' "$sname" ${#val}
+          fi
+        else
+          printf '  %-34s %5s        unreadable — approval declined\n' "$sname" "?"
+        fi
+      done
+      val=""
+      (( seen )) || print "  no clau:* secrets stored"
+      return $bad
+      ;;
     list)
       security dump-keychain 2&gt;/dev/null | rg -o '"svce"&lt;blob&gt;="clau:[^"]+"' | sed 's/.*="clau:/clau:/;s/"$//' | sort -u
       ;;
@@ -1634,6 +1679,7 @@ $ print $PROD_DB_URL_RO      <span class="c"># empty — it only ever existed in
       print "clau-secret — keychain store for clau personas"
       print "  clau-secret set [-q] &lt;NAME&gt;   store a value (hidden input · -q = no prompt on read)"
       print "  clau-secret check &lt;NAME&gt;      does it exist"
+      print "  clau-secret audit             stored length of every secret · flags truncated ones"
       print "  clau-secret get &lt;NAME&gt;        print it (prompts unless stored with -q)"
       print "  clau-secret list              list stored names"
       print "  clau-secret rm &lt;NAME&gt;         delete"
@@ -1653,6 +1699,11 @@ $ print $PROD_DB_URL_RO      <span class="c"># empty — it only ever existed in
         <span class="tag trap">the trap</span>
         <h4>Only <code>mcp.json</code> is scanned</h4>
         <p>The placeholder sweep reads the layers' <code>mcp.json</code> files. A <code>${VAR}</code> written anywhere else — <code>settings.json</code>, <code>persona.md</code> — is never resolved and never warned about. Put the variable in an <code>.env</code> instead.</p>
+      </div>
+      <div class="gotcha">
+        <span class="tag trap">the trap</span>
+        <h4>Anything stored at exactly 128 chars is already broken</h4>
+        <p>Earlier versions let <code>security</code> collect the value at its own prompt, which cut the input at 128 bytes and still reported success — long enough for a Neon URL or a JWT to look plausible and fail as “the server won't connect”. The bytes are gone; they can't be recovered. Run <code>clau-secret audit</code>, and re-<code>set</code> anything it flags.</p>
       </div>
       <div class="gotcha">
         <span class="tag manual">note</span>

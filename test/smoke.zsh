@@ -11,7 +11,7 @@ emulate -L zsh
 local R="${1:-${0:A:h:h}}"
 local T; T=$(mktemp -d) || exit 1
 local -i pass=0 fail=0
-local o p acc dir n f
+local o p acc dir n f rc V200 VQ
 
 ok(){ if [[ "$2" == *"$3"* ]]; then print "  ✓ $1"; (( pass++ )); else
       print "  ✗ $1\n      want: $3\n      got:  ${2//$'\n'/ | }"; (( fail++ )); fi }
@@ -33,6 +33,59 @@ esac; done
 EOF
 chmod +x "$T/bin/claude"
 
+# stub `security` — a keychain made of files under $SECSTORE. Never touches a real
+# one. Records a bare `-w` (the value coming from security's own TTY prompt, the
+# bug) so the suite can prove clau-secret passes the value itself.
+#   SECSTUB_APPROVE=1   read a locked item, as if you clicked Allow
+#   SECSTUB_TRUNCATE=N  store only the first N chars, as if the write corrupted
+mkdir -p "$T/sec"
+cat > "$T/bin/security" <<'EOF'
+#!/bin/sh
+s="$SECSTORE"; cmd="$1"; shift
+svc=''; val=''; wflag=0; interactive=0; locked=0
+case "$cmd" in
+  add-generic-password)
+    while [ $# -gt 0 ]; do case "$1" in
+      -s) svc="$2"; shift 2 ;;
+      -a|-l|-D|-j) shift 2 ;;
+      -T) locked=1; shift 2 ;;
+      -w) if [ $# -ge 2 ]; then val="$2"; shift 2; else interactive=1; shift; fi ;;
+      *) shift ;;
+    esac; done
+    if [ "$interactive" -eq 1 ]; then echo "$svc" >> "$s/.interactive"; val=INTERACTIVE; fi
+    [ -n "$SECSTUB_TRUNCATE" ] && val=$(printf '%s' "$val" | cut -c1-"$SECSTUB_TRUNCATE")
+    printf '%s' "$val" > "$s/$svc"
+    if [ "$locked" -eq 1 ]; then : > "$s/$svc.locked"; else rm -f "$s/$svc.locked"; fi
+    exit 0 ;;
+  find-generic-password)
+    while [ $# -gt 0 ]; do case "$1" in
+      -s) svc="$2"; shift 2 ;;
+      -a) shift 2 ;;
+      -w) wflag=1; shift ;;
+      *) shift ;;
+    esac; done
+    [ -f "$s/$svc" ] || exit 44
+    if [ "$wflag" -eq 1 ]; then
+      [ -f "$s/$svc.locked" ] && [ "$SECSTUB_APPROVE" != 1 ] && exit 128
+      cat "$s/$svc"; echo
+    fi
+    exit 0 ;;
+  delete-generic-password)
+    while [ $# -gt 0 ]; do case "$1" in -s) svc="$2"; shift 2 ;; *) shift ;; esac; done
+    [ -f "$s/$svc" ] || exit 44
+    rm -f "$s/$svc" "$s/$svc.locked"; exit 0 ;;
+  dump-keychain)
+    for f in "$s"/clau:*; do
+      [ -f "$f" ] || continue
+      case "$f" in *.locked) continue ;; esac
+      printf '    "svce"<blob>="%s"\n' "${f##*/}"
+    done
+    exit 0 ;;
+esac
+exit 1
+EOF
+chmod +x "$T/bin/security"
+
 local P="$T/home/.claude/personas"
 mkdir -p "$P/base" "$P/acme/base" "$P/acme/prod" "$P/acme/dev" "$P/other/prod"
 print '{"permissions":{"allow":["Bash(git *)"]}}'                         > "$P/base/settings.json"
@@ -53,8 +106,10 @@ print '{"enabledPlugins":{"repo@mp":true}}'   > clau/personas/repoonly/settings.
 print '{"mcpServers":{"loc":{"command":"z"}}}' > clau/personas/repoonly/mcp.json
 
 export HOME="$T/home" PATH="$T/bin:/opt/homebrew/bin:/usr/bin:/bin" MY_TOKEN=tok
+export SECSTORE="$T/sec"
 source "$R/clau.zsh"
 source "$R/clau-mcp.zsh"
+source "$R/clau-secret.zsh"
 
 # ── listing & discovery ────────────────────────────────────────────────
 print "\nlisting & discovery"
@@ -117,6 +172,49 @@ ok "add echoes the server"        "$o" '"command": "npx"'
 o=$(clau-mcp list acme/dev);             ok "add persisted"     "$o" "exa  stdio  npx"
 o=$(clau-mcp rm acme/dev exa 2>&1);      ok "rm reports"        "$o" "removed exa"
 o=$(clau-mcp list acme/dev);             no "rm persisted"      "$o" "exa"
+
+# ── clau-secret: the value must reach `security` intact, and be read back ──
+print "\nclau-secret"
+V200=$(printf 'x%.0s' {1..200})
+VQ='p@ss w"or\d$X`!#%^&*()[]{}|;:<>,.?/=+-'
+
+o=$(print -r -- "$V200" | clau-secret set -q LONG 2>&1)
+ok "200-char store verified"      "$o" "200 chars, verified"
+is "200 chars stored intact"      "$([[ "$(<"$T/sec/clau:LONG")" == "$V200" ]] && print y)"
+no "set prints no value"          "$o" "xxxxxxxxxxxxxxxxxxxx"
+print -r -- "$VQ" | clau-secret set -q TRICKY >/dev/null 2>&1
+is "metacharacters survive"       "$([[ "$(<"$T/sec/clau:TRICKY")" == "$VQ" ]] && print y)"
+is "security never interactive"   "$([[ ! -e "$T/sec/.interactive" ]] && print y)"
+
+o=$(print -r -- "eleven-char" | SECSTUB_APPROVE=1 clau-secret set LOCKED 2>&1)
+ok "locked store verified"        "$o" "11 chars, verified · every read asks"
+o=$(print -r -- "unapproved" | clau-secret set LOCKED2 2>&1); rc=$?
+ok "declined read-back warns"     "$o" "UNVERIFIED"
+is "declined read-back exits 1"   "$([[ $rc -ne 0 ]] && print y)"
+o=$(print -r -- "$V200" | SECSTUB_TRUNCATE=128 clau-secret set -q CUT 2>&1); rc=$?
+ok "truncated write is caught"    "$o" "CORRUPT — wrote 200 chars, keychain holds 128"
+is "truncated write exits 1"      "$([[ $rc -ne 0 ]] && print y)"
+o=$(print -r -- "" | clau-secret set -q EMPTY 2>&1); rc=$?
+ok "empty value refused"          "$o" "empty value"
+is "empty value exits 1"          "$([[ $rc -ne 0 ]] && print y)"
+
+o=$(clau-secret check LOCKED 2>&1)
+ok "check stays prompt-free"      "$o" "clau:LOCKED ✓ exists"
+o=$(clau-secret check NOPE 2>&1); ok "check reports missing" "$o" "✗ missing"
+
+o=$(clau-secret audit 2>&1)
+ok "audit flags locked as unread" "$o" "unreadable — approval declined"
+o=$(SECSTUB_APPROVE=1 clau-secret audit 2>&1); rc=$?
+ok "audit fingerprints 128 chars" "$o" "clau:CUT"
+ok "audit names the re-store"     "$o" "likely truncated — clau-secret set CUT"
+ok "audit passes a good value"    "$o" "200 chars  ok"
+no "audit prints no values"       "$o" "xxxxxxxxxxxxxxxxxxxx"
+is "audit exits 1 on truncation"  "$([[ $rc -ne 0 ]] && print y)"
+
+o=$(clau-secret list)
+ok "list spans stored secrets"    "$o" "clau:LONG"
+o=$(clau-secret rm LONG 2>&1);    ok "rm reports"        "$o" "removed clau:LONG"
+o=$(clau-secret list);            no "rm persisted"      "$o" "clau:LONG"
 
 print "\n$pass passed, $fail failed"
 cd /
