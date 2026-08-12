@@ -70,9 +70,8 @@ clau-mcp() {
         tmp=$(mktemp) || return 1
         jq --arg n "$name" --argjson s "$srv" '.mcpServers[$n]=$s' "$f" > "$tmp" && mv "$tmp" "$f" || { rm -f "$tmp"; return 1 }
         print "added $name → ${f/#$HOME/~}"
+        jq --arg n "$name" '.mcpServers[$n]' "$f"
       done
-      print ""
-      jq --arg n "$name" '.mcpServers[$n]' "$f"
       print "\nrestart to pick it up: clau ${targets[1]}"
       ;;
 
@@ -102,16 +101,17 @@ clau-mcp() {
       ;;
 
     list|ls)
-      local persona="$1" dir f
+      local persona="$1" dir rel
+      local filter='.mcpServers | to_entries[] | "  \(.key)  \(.value.type // "stdio")  \(.value.url // .value.command)"'
       if [[ -n "$persona" ]]; then
         dir=$(_clau_persona_dir "$persona") || return 1
-        f="$dir/mcp.json"
-        [[ -f "$f" ]] && jq -r '.mcpServers | to_entries[] | "  \(.key)  \(.value.type // "stdio")  \(.value.url // .value.command)"' "$f" || print "  (none)"
+        [[ -f "$dir/mcp.json" ]] && jq -r "$filter" "$dir/mcp.json" || print "  (none)"
       else
-        for f in "$HOME"/.claude/personas/**/mcp.json(N); do
-          print "${${f:h}#$HOME/.claude/personas/}"
-          jq -r '.mcpServers | to_entries[] | "  \(.key)  \(.value.type // "stdio")  \(.value.url // .value.command)"' "$f"
-        done
+        while IFS=$'\t' read -r rel dir; do
+          [[ -f "$dir/mcp.json" ]] || continue
+          print "$rel"
+          jq -r "$filter" "$dir/mcp.json"
+        done < <(_clau_scan)
       fi
       ;;
 

@@ -311,7 +311,7 @@ clau() {
   fi
 
   local -a layers
-  local n c
+  local n c acc p
   for n in $picked; do
     layers+=("base")
     acc=""
