@@ -11,13 +11,19 @@ repos — never commit them here.
   that doesn't land in both leaves the page unable to bootstrap itself. After
   editing a shell file, re-embed it rather than hand-patching the HTML, and
   diff embedded-vs-disk before shipping.
-- Shell changes get sandbox-tested first (fake `$HOME` + stub `claude` on
-  `PATH`; exercise: `-h` list, single launch, leaf-name shorthand, layer merge,
-  repo override, persona.md concatenation, scratch + `.scratch` symlink,
-  `${VAR}`/`.env` resolution, multi-persona merge, unknown + ambiguous names,
-  statusline badges, `clau-mcp` add/list/rm, `clau --json` shape). Never
-  exercise the bare-`clau` picker in a non-interactive test — it blocks on the
-  TTY.
+- Shell changes get sandbox-tested first: **`./test/smoke.zsh`** (fake `$HOME` +
+  stub `claude` on `PATH`, temp persona tree, nothing outside `$TMPDIR`
+  touched). It covers `-h` list, `--json` shape, leaf-name shorthand, unknown +
+  ambiguous names, layer merge, repo override, persona.md concatenation,
+  scratch + `.scratch` symlink, `${VAR}`/`.env` resolution, multi-persona merge,
+  badge colours, caller-variable hygiene, and `clau-mcp` add/list/rm. Add a case
+  for anything you change; it must stay green. Never exercise the bare-`clau`
+  picker there — it blocks on the TTY.
+- The launcher is sourced into an interactive shell, so it must not clobber the
+  caller's variables: every loop variable in `clau()` needs a `local`. The
+  "shell hygiene" block in the smoke test guards this. Note `clau` is *not*
+  `no_unset`-clean (assoc-array probes like `pmap[$a]`), so don't run the suite
+  under `setopt no_unset`.
 - `clau --json` is a **public contract**: `raycast/src/lib/personas.ts` types
   it field for field. Changing a key means changing that type in the same
   commit, and the JSON path must never launch anything.

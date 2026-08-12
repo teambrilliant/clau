@@ -76,6 +76,10 @@ mkdir -p ~/.claude/personas/base
 
 Requires `zsh`, `jq`, `rg`, and `security` (macOS) for the keychain layer.
 
+Changing the shell files? Run `./test/smoke.zsh` — it builds a throwaway
+`$HOME` with a stub `claude`, exercises the launcher end to end, and touches
+nothing you own.
+
 Or don't build it by hand: the guide's **bootstrap section** has a copy-paste
 prompt that makes Claude Code set everything up for the repo you're in.
 
