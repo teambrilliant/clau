@@ -59,8 +59,10 @@ repos — never commit them here.
 
 ## Status
 
-- `enabledPlugins` via `--settings` is documented but not yet live-tested — the
-  guide's "first flight" step is the test.
+- `enabledPlugins` via `--settings` is live-tested (2026-08-24): the flag wins
+  over `~/.claude/settings.json` per plugin key in both directions — a persona
+  can switch on a globally-disabled plugin and switch off a globally-enabled
+  one, so global installs stay persona-scopable.
 - `enabledPlugins` merges by OR across layers, so a leaf cannot switch off a
   plugin its `base/` enabled. Documented as a trap in "the layers"; revisit if
   it turns out to bite in practice.
