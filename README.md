@@ -30,10 +30,12 @@ it inherits:
 
 ```
 clau                    → interactive picker · type to search · space toggles
+                          no terminal on stdin → prints the model + tree + skill
 clau prod               → launch by leaf name (unique names resolve on their own)
 clau acme/prod notion   → several hats merged into one session
 clau prod -c            → flags after the names pass through to claude
-clau -h                 → plain list, no picker
+clau -h                 → the model + plain list, no picker
+clau skill              → the authoring skill (stdout) · `install` writes .claude/skills/
 claude                  → plain claude, untouched — clau is only for hats
 ```
 
@@ -43,6 +45,7 @@ claude                  → plain claude, untouched — clau is only for hats
 |---------------|--------------------------------------------------------------------|
 | `clau`        | launch one or more hats                                             |
 | `clau --json` | the resolved tree as JSON — what the Raycast app reads              |
+| `clau skill`  | the persona-authoring skill on stdout · `install` writes it to `.claude/skills/` |
 | `clau-mcp`    | add / remove / list MCP servers inside a hat, without editing JSON   |
 | `clau-secret` | keychain store behind the `${VAR}` placeholders — see [SECRETS.md](SECRETS.md) |
 
@@ -70,7 +73,8 @@ cp statusline.sh ~/.claude/statusline.sh && chmod +x ~/.claude/statusline.sh
 # then in ~/.claude/settings.json:
 #   { "statusLine": { "type": "command", "command": "~/.claude/statusline.sh" } }
 
-# 3. personas — yours to define; see the guide
+# 3. personas — yours to define; see the guide, or let Claude Code build them:
+#    in the repo, tell a session "onboard clau personas for this repo: run clau and follow it"
 mkdir -p ~/.claude/personas/base
 ```
 
@@ -83,13 +87,11 @@ nothing you own.
 Or don't build it by hand: the guide's **bootstrap section** has a copy-paste
 prompt that makes Claude Code set everything up for the repo you're in.
 
-## Skill
+## Skill — and agent onboarding
 
-[`skills/clau-persona`](skills/clau-persona/) teaches Claude Code to author hats
-— where they live, which layer a thing belongs in, the merge rules that bite,
-and how to verify one without leaking a secret. Symlink it into
-`~/.claude/skills/` and ask for "a read-only prod persona for this repo". See
-[`skills/README.md`](skills/README.md).
+`clau skill` prints the skill that teaches Claude Code to author hats — where they live, which layer a thing belongs in, the merge rules that bite, and how to verify one without leaking a secret. It lives inside `clau.zsh`, so it is always the version of the launcher you have installed.
+
+Nothing to install: in a Claude Code session say "onboard clau personas for this repo: run `clau` and follow it". Without a terminal on stdin, bare `clau` can't open the picker, so it prints the model, the persona tree and the skill — the agent has everything in one call, and it is gone when the session ends. `clau skill install` writes it to the repo's `.claude/skills/clau-persona/` (`--global` for `~/.claude/skills/`) if you'd rather it trigger on "new persona" by itself in later sessions; hide it per hat with `"skillOverrides": { "clau-persona": "off" }`.
 
 ## Raycast
 

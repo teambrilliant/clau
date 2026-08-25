@@ -1,4 +1,5 @@
 clau-mcp() {
+  emulate -L zsh
   local cmd="$1"; shift 2>/dev/null
 
   case "$cmd" in
@@ -38,7 +39,7 @@ clau-mcp() {
       if [[ -n "$persona" ]]; then
         targets=("$persona")
       else
-        targets=(${(f)"$(_clau_pick_personas)"})
+        targets=(${(f)"$(__clau_pick_personas)"})
         (( ${#targets} )) || { print "clau-mcp: nothing selected"; return 1 }
       fi
 
@@ -64,7 +65,7 @@ clau-mcp() {
 
       local t dir f tmp
       for t in $targets; do
-        dir=$(_clau_persona_dir "$t") || return 1
+        dir=$(__clau_persona_dir "$t") || return 1
         f="$dir/mcp.json"
         [[ -f "$f" ]] || print -r -- '{"mcpServers":{}}' > "$f"
         tmp=$(mktemp) || return 1
@@ -86,12 +87,12 @@ clau-mcp() {
       if [[ -n "$persona" ]]; then
         targets=("$persona")
       else
-        targets=(${(f)"$(_clau_pick_personas)"})
+        targets=(${(f)"$(__clau_pick_personas)"})
         (( ${#targets} )) || { print "clau-mcp: nothing selected"; return 1 }
       fi
       local t dir f tmp
       for t in $targets; do
-        dir=$(_clau_persona_dir "$t") || return 1
+        dir=$(__clau_persona_dir "$t") || return 1
         f="$dir/mcp.json"
         [[ -f "$f" ]] || { print -u2 "clau-mcp: $t has no mcp.json"; continue }
         tmp=$(mktemp) || return 1
@@ -104,14 +105,14 @@ clau-mcp() {
       local persona="$1" dir rel
       local filter='.mcpServers | to_entries[] | "  \(.key)  \(.value.type // "stdio")  \(.value.url // .value.command)"'
       if [[ -n "$persona" ]]; then
-        dir=$(_clau_persona_dir "$persona") || return 1
+        dir=$(__clau_persona_dir "$persona") || return 1
         [[ -f "$dir/mcp.json" ]] && jq -r "$filter" "$dir/mcp.json" || print "  (none)"
       else
         while IFS=$'\t' read -r rel dir; do
           [[ -f "$dir/mcp.json" ]] || continue
           print "$rel"
           jq -r "$filter" "$dir/mcp.json"
-        done < <(_clau_scan)
+        done < <(__clau_scan)
       fi
       ;;
 

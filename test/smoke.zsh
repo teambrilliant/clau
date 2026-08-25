@@ -11,7 +11,7 @@ emulate -L zsh
 local R="${1:-${0:A:h:h}}"
 local T; T=$(mktemp -d) || exit 1
 local -i pass=0 fail=0
-local o p acc dir n f rc V200 VQ
+local o p acc dir n f tty rc V200 VQ
 
 ok(){ if [[ "$2" == *"$3"* ]]; then print "  ✓ $1"; (( pass++ )); else
       print "  ✗ $1\n      want: $3\n      got:  ${2//$'\n'/ | }"; (( fail++ )); fi }
@@ -122,6 +122,51 @@ ok "--json lists every persona"   "$o" "acme/dev acme/prod other/prod repoonly"
 o=$(clau --json | jq -r '.personas[]|select(.path=="acme/prod")|"\(.color)|\(.hasMcp)\(.hasEnv)\(.hasPrompt)"')
 ok "--json per-persona shape"     "$o" "48;5;196|truetruetrue"
 
+# ── onboarding: no terminal on stdin → model + tree + skill, never a launch ──
+print "\nonboarding"
+o=$(clau </dev/null 2>&1); rc=$?
+ok "no-tty bare prints the model"   "$o" "persona launcher for Claude Code"
+ok "no-tty bare lists the tree"     "$o" "repoonly"
+ok "no-tty bare appends the skill"  "$o" "## Rules that bite"
+no "no-tty bare never launches"     "$o" "ARGS:"
+is "no-tty bare exits 0"            "$([[ $rc -eq 0 ]] && print y)"
+o=$(clau -c </dev/null 2>&1); rc=$?
+ok "no-tty flags-only refuses"      "$o" "no terminal to pick from"
+no "no-tty flags-only never launches" "$o" "ARGS:"
+is "no-tty flags-only exits 1"      "$([[ $rc -ne 0 ]] && print y)"
+o=$(clau acme/dev </dev/null 2>&1); ok "no-tty named hat launches" "$o" "PERSONA=acme/dev"
+o=$(clau -h </dev/null)
+ok "-h explains the model"          "$o" "Onboarding"
+no "-h omits the skill body"        "$o" "## Rules that bite"
+o=$(clau skill)
+ok "skill prints the body"          "$o" "# clau persona authoring"
+no "skill body has no frontmatter"  "$o" "name: clau-persona"
+o=$(clau skill install 2>&1);       ok "skill install writes"   "$o" "wrote"
+f="$T/proj/.claude/skills/clau-persona/SKILL.md"
+is "skill lands in repo .claude"    "$([[ -f "$f" ]] && print y)"
+ok "installed skill has frontmatter" "$(head -2 "$f")" "name: clau-persona"
+ok "installed skill has the body"   "$(<"$f")" "## Rules that bite"
+o=$(clau skill install 2>&1);       ok "skill install is idempotent" "$o" "up to date"
+o=$(clau skill install --global 2>&1)
+is "skill --global lands in ~/.claude" "$([[ -f "$T/home/.claude/skills/clau-persona/SKILL.md" ]] && print y)"
+o=$(clau skill bogus 2>&1); rc=$?;  ok "skill rejects unknown verbs" "$o" "usage: clau skill"
+is "skill unknown verb exits 1"     "$([[ $rc -ne 0 ]] && print y)"
+o=$(clau-mcp add foo -- x </dev/null 2>&1); ok "clau-mcp picker refuses without a terminal" "$o" "no terminal to pick from"
+
+# ── caller options: Claude Code's shell runs with NO_BARE_GLOB_QUAL ─────
+print "\ncaller options"
+o=$( setopt nobareglobqual ksharrays shwordsplit; clau -h 2>&1 )
+no "hostile opts: no bad pattern"     "$o" "bad pattern"
+ok "hostile opts: -h lists the tree"  "$o" "    prod"
+o=$( setopt nobareglobqual ksharrays shwordsplit; clau acme/prod 2>&1 )
+ok "hostile opts: launch merges"      "$o" '"deny":["Bash(psql*)"]'
+ok "hostile opts: badge resolves"     "$o" "BADGES=48;5;196"
+o=$( setopt nobareglobqual ksharrays shwordsplit; clau </dev/null 2>&1 )
+ok "hostile opts: onboarding prints"  "$o" "## Rules that bite"
+no "hostile opts: onboarding clean"   "$o" "bad pattern"
+o=$( setopt nobareglobqual ksharrays shwordsplit; clau-mcp list 2>&1 )
+ok "hostile opts: clau-mcp list"      "$o" "repoonly"
+
 # ── naming ─────────────────────────────────────────────────────────────
 print "\nnaming"
 o=$(clau nope 2>&1);      ok "unknown name errors"      "$o" "unknown persona"
@@ -153,13 +198,14 @@ ok ".scratch git-excluded"        "$(<"$T/proj/.git/info/exclude")" ".scratch"
 
 # ── shell hygiene: launching must not clobber caller variables ─────────
 print "\nshell hygiene"
-p=KEEP_P; acc=KEEP_ACC; dir=KEEP_DIR; n=KEEP_N; f=KEEP_F
+p=KEEP_P; acc=KEEP_ACC; dir=KEEP_DIR; n=KEEP_N; f=KEEP_F; tty=KEEP_TTY
 clau acme/prod >/dev/null 2>&1
 ok "\$p survives"                 "$p"   "KEEP_P"
 ok "\$acc survives"               "$acc" "KEEP_ACC"
 ok "\$dir survives"               "$dir" "KEEP_DIR"
 ok "\$n survives"                 "$n"   "KEEP_N"
 ok "\$f survives"                 "$f"   "KEEP_F"
+ok "\$tty survives"               "$tty" "KEEP_TTY"
 
 # ── clau-mcp ───────────────────────────────────────────────────────────
 print "\nclau-mcp"

@@ -1,4 +1,5 @@
 clau-secret() {
+  emulate -L zsh
   local cmd="$1"; shift 2>/dev/null
   local silent=0
   [[ "$1" == "-q" ]] && { silent=1; shift }
