@@ -5,12 +5,10 @@ repos — never commit them here.
 
 ## Source of truth & sync rules
 
-- `docs/index.html` is canonical and carries the **full source** of `clau.zsh`,
-  `clau-mcp.zsh`, `clau-secret.zsh` and `statusline.sh` in its code blocks —
-  the bootstrap prompt tells Claude to install from the page, so a shell change
-  that doesn't land in both leaves the page unable to bootstrap itself. After
-  editing a shell file, re-embed it rather than hand-patching the HTML, and
-  diff embedded-vs-disk before shipping.
+- Docs are markdown: `README.md` (what + install), `docs/guide.md` (the field
+  guide), `SECRETS.md`, `SECURITY.md`. No HTML, no embedded source — the guide
+  links to the files instead. A behaviour change lands in the code, the guide
+  and the skill text; `docs/guide.md` links must resolve (`rg -o '\]\(\.\./[^)]+\)'`).
 - Shell changes get sandbox-tested first: **`./test/smoke.zsh`** (fake `$HOME` +
   stub `claude` on `PATH`, temp persona tree, nothing outside `$TMPDIR`
   touched). It covers `-h` list, `--json` shape, leaf-name shorthand, unknown +
@@ -19,16 +17,17 @@ repos — never commit them here.
   badge colours, caller-variable hygiene, `clau-mcp` add/list/rm, and the
   no-terminal paths: bare `clau` with stdin redirected (model + tree + skill,
   never a launch), flags-only refusal, `skill` / `skill install` /
-  `--global`. Add a case for anything you change; it must stay green. Never
-  exercise the bare-`clau` picker there — it blocks on the TTY — and the human
+  `--global`, and a "caller options" block under `nobareglobqual ksharrays
+  shwordsplit`. Add a case for anything you change; it must stay green — CI
+  runs it on `macos-latest` (`.github/workflows/smoke.yml`). Never exercise
+  the bare-`clau` picker there — it blocks on the TTY — and the human
   first-run guide (terminal + no personas) needs a pty, so it is untested.
 - The launcher is sourced into an interactive shell, so it must not clobber the
   caller's variables: every loop variable in `clau()` needs a `local`. The
   "shell hygiene" block in the smoke test guards this. Every function also
   opens with `emulate -L zsh`: the caller's options are not ours — Claude
   Code's Bash tool runs zsh with `NO_BARE_GLOB_QUAL` (and no `extendedglob`),
-  where every `(/N)` qualifier is a "bad pattern" — and the "caller options"
-  smoke block runs the launcher under exactly those. Note `clau` is *not*
+  where every `(/N)` qualifier is a "bad pattern". Note `clau` is *not*
   `no_unset`-clean (assoc-array probes like `pmap[$a]`), so don't run the suite
   under `setopt no_unset`.
 - Helpers are `__clau_*` — double underscore, deliberately. Claude Code's Bash
@@ -42,29 +41,16 @@ repos — never commit them here.
   commit, and the JSON path must never launch anything.
 - The persona-authoring skill is the heredoc in `__clau_skill_body` inside
   `clau.zsh` — `clau skill` prints it, `clau skill install` writes
-  `.claude/skills/clau-persona/SKILL.md`; there is no `skills/` directory. It
-  documents the same mechanics as the guide — layer resolution, merge rules,
-  secret handling — so a behaviour change lands in both. The text must stay
-  self-contained and path-agnostic (no `~/.zshrc.d`, no personal tree, no
-  "see the repo's X" — an agent reads it with nothing else in context; it
-  reads `clau -h` / `clau --json` instead).
+  `.claude/skills/clau-persona/SKILL.md`; there is no `skills/` directory. The
+  text must stay self-contained and path-agnostic (no `~/.zshrc.d`, no personal
+  tree, no "see the repo's X" — an agent reads it with nothing else in context;
+  it reads `clau -h` / `clau --json` instead).
 - `raycast/` is a real Raycast extension — `npx tsc --noEmit`, `npx eslint src`
   and `npx prettier --check src` must all pass before shipping. It resolves the
   zsh files via `$CLAU_HOME` → `~/.zshrc.d` → `~/.claude` → `~/.config/clau`;
   never hardcode a personal path there.
-- Published to Dossier as `docs/claude-code-personas` (same URL across versions):
-  `bun <tap-skills dossier-publish>/scripts/dossier.ts republish docs/claude-code-personas docs/index.html`
-  The bootstrap prompt inside the page hardcodes the public share URL — if the
-  share link is ever revoked/re-minted, update the prompt.
-- Prompt changes (the bootstrap section) get explicit approval before republish.
-
-## Writing conventions (docs/index.html)
-
-- Terminology: **"persona"** for anything typed or configured (code, flags, file
-  names, mechanism prose); **"hat"** only as flavor (title, headings, slogans).
-- Page is fully self-contained (inline CSS/JS/SVG; Google Fonts degrade offline).
-- Sections alternate `band` / `band deep`; verify in a browser after edits with a
-  hard reload (`file://` caches), check console + TOC anchors.
+- The overview page lives in the brilliant-ai app (`teambrilliant.ai/clau`),
+  not here; it links to `docs/guide.md` on GitHub.
 
 ## Secrets
 
@@ -88,6 +74,4 @@ repos — never commit them here.
 - `enabledPlugins` merges by OR across layers, so a leaf cannot switch off a
   plugin its `base/` enabled. Documented as a trap in "the layers"; revisit if
   it turns out to bite in practice.
-- `docs/atlas/` lags the guide badly — it predates persona directories, layers,
-  the picker, multi-persona sessions, secrets and scratch. Read
-  `docs/atlas/CLAUDE.md` before editing atlas maps.
+
