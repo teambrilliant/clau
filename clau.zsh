@@ -2,11 +2,16 @@ __clau_pick() {
   emulate -L zsh
   local -a rows; rows=("$@")
   local -i n=${#rows}
-  local -a disp paths sel vis order
+  local -a disp paths orig sel vis order
   local i j p g
   for (( i = 1; i <= n; i++ )); do
     disp[i]="${rows[i]%%$'\t'*}"
-    paths[i]="${rows[i]#*$'\t'}"
+    p="${rows[i]#*$'\t'}"
+    if [[ "$p" == *$'\t'* ]]; then
+      paths[i]="${p%%$'\t'*}"; orig[i]="${p#*$'\t'}"
+    else
+      paths[i]="$p"; orig[i]=""
+    fi
     sel[i]=0
   done
 
@@ -60,9 +65,9 @@ __clau_pick() {
         else
           box="☐"; (( sel[i] )) && box=$'\e[38;5;208m☑\e[0m'
           if (( ${#order} && order[cur] == i )); then
-            print "  \e[38;5;208m❯\e[0m ${ind}${box} \e[1m${txt}\e[0m"
+            print "  \e[38;5;208m❯\e[0m ${ind}${box} \e[1m${txt}\e[0m${orig[i]:+\e[2m${orig[i]}\e[0m}"
           else
-            print "    ${ind}${box} ${txt}"
+            print "    ${ind}${box} ${txt}${orig[i]:+\e[2m${orig[i]}\e[0m}"
           fi
         fi
       done
@@ -167,21 +172,38 @@ __clau_scan() {
   for rel in ${(oi)${(k)pmap}}; do print -r -- "$rel"$'\t'"${pmap[$rel]}"; done
 }
 
+# rows are display \t path \t origin. Headers carry a '#'-prefixed path and an
+# empty origin; leaves carry the persona's rel path and 'repo' or 'global',
+# already left-padded so the column lines up under any consumer.
 __clau_rows() {
   emulate -L zsh
   typeset -A seenhdr
-  local rel dir acc i
-  local -a parts
+  local rel dir acc i rdir org d row
+  local -a parts out
+  local -i w=0
+  rdir="${${(f)"$(__clau_roots)"}[1]}"
   while IFS=$'\t' read -r rel dir; do
     parts=(${(s:/:)rel}); acc=""
     for (( i = 1; i < ${#parts}; i++ )); do
       [[ -n "$acc" ]] && acc="$acc/$parts[i]" || acc="$parts[i]"
       [[ -n "${seenhdr[$acc]}" ]] && continue
       seenhdr[$acc]=1
-      printf '%*s%s\t#%s\n' $(( (i - 1) * 2 )) '' "$parts[i]" "$acc"
+      printf -v d '%*s%s' $(( (i - 1) * 2 )) '' "$parts[i]"
+      out+=("$d"$'\t'"#$acc"$'\t')
     done
-    printf '%*s%s\t%s\n' $(( (${#parts} - 1) * 2 )) '' "$parts[-1]" "$rel"
+    printf -v d '%*s%s' $(( (${#parts} - 1) * 2 )) '' "$parts[-1]"
+    (( ${#d} > w )) && w=${#d}
+    [[ "$dir" == "$rdir"/* ]] && org=repo || org=global
+    out+=("$d"$'\t'"$rel"$'\t'"$org")
   done < <(__clau_scan)
+  for row in $out; do
+    d="${row%%$'\t'*}"; acc="${row#*$'\t'}"; org="${acc#*$'\t'}"; acc="${acc%%$'\t'*}"
+    if [[ -n "$org" ]]; then
+      printf '%s\t%s\t%*s%s\n' "$d" "$acc" $(( w + 2 - ${#d} )) '' "$org"
+    else
+      printf '%s\t%s\t\n' "$d" "$acc"
+    fi
+  done
 }
 
 __clau_roots() {
@@ -228,6 +250,36 @@ __clau_scratch_dir() {
   gitcommon=$(git rev-parse --git-common-dir 2>/dev/null)
   if [[ -n "$gitcommon" ]]; then proj="${${${gitcommon:A}:h}:t}"; else proj="${PWD:t}"; fi
   print -r -- "$scratch_root/$proj"
+}
+
+# a personas root, shortened for display: relative while it sits under $PWD,
+# ~-form under $HOME, absolute otherwise — an absolute repo root is the tell
+# that the hats come from an ancestor directory, not from this project.
+__clau_root_label() {
+  emulate -L zsh
+  local p="$1"
+  [[ -d "$p" ]] || return 1
+  if [[ "$p" == "$PWD"/* ]]; then print -r -- "${p#$PWD/}"
+  elif [[ "$p" == "$HOME"/* ]]; then print -r -- "~${p#$HOME}"
+  else print -r -- "$p"; fi
+}
+
+__clau_origin_note() {
+  emulate -L zsh
+  local rdir rel dir rlbl note=""
+  local -i nrepo=0 nglob=0
+  rdir="${${(f)"$(__clau_roots)"}[1]}"
+  while IFS=$'\t' read -r rel dir; do
+    if [[ "$dir" == "$rdir"/* ]]; then (( nrepo += 1 )); else (( nglob += 1 )); fi
+  done < <(__clau_scan)
+  if (( nrepo )); then
+    rlbl="$(__clau_root_label "$rdir")"
+    note="$nrepo repo${rlbl:+ ($rlbl)}"
+  else
+    note="no repo hats"
+  fi
+  (( nglob )) && note="${note} · $nglob global"
+  print -r -- "$note"
 }
 
 __clau_pick_personas() {
@@ -326,7 +378,7 @@ Never assume the tree — read it first:
 
 ```
 clau -h            # the list, plus base layers and marketplace health
-clau --json | jq   # the resolved tree as data: dirs, groups, colors, flags
+clau --json | jq   # as data: dirs, groups, origins (repo|global), colors, flags
 ```
 
 ## Anatomy
@@ -361,6 +413,8 @@ wins.
   automatically to everything below.
 - A folder holding only folders (like `<group>`) is a container: a heading in
   the picker, not launchable.
+- Every hat is labelled `repo` or `global` in the picker and in `clau -h`, so
+  you can tell a project-committed hat from one of the user's own.
 - Layer order is outermost-first, so the persona itself wins conflicts —
   **except `enabledPlugins`, which merges by OR** (see "Rules that bite").
 
@@ -508,10 +562,11 @@ clau() {
         jq -n \
           --arg path "$jrel" --arg name "${jrel:t}" --arg dir "$jdir" \
           --arg group "$jgroup" --arg color "$(__clau_color "$jrel")" \
+          --arg origin "$([[ "$jdir" == "$rdir"/* ]] && print repo || print global)" \
           --argjson mcp "$([[ -f "$jdir/mcp.json" ]] && print true || print false)" \
           --argjson env "$([[ -f "$jdir/.env" ]] && print true || print false)" \
           --argjson prompt "$([[ -f "$jdir/persona.md" ]] && print true || print false)" \
-          '{path:$path,name:$name,dir:$dir,group:$group,color:$color,hasMcp:$mcp,hasEnv:$env,hasPrompt:$prompt}'
+          '{path:$path,name:$name,dir:$dir,group:$group,color:$color,origin:$origin,hasMcp:$mcp,hasEnv:$env,hasPrompt:$prompt}'
       done < <(__clau_scan)
     } | jq -s --arg cwd "$PWD" --arg local "$rdir" --arg global "$pdir" --arg scratch "$(__clau_scratch_dir)" \
       '{cwd:$cwd, roots:{local:$local, global:$global}, scratch:$scratch, personas:.}'
@@ -523,8 +578,18 @@ clau() {
   local tty=0; [[ -t 0 ]] && tty=1
   if [[ "$1" == "-h" || "$1" == "--help" ]] || (( $# == 0 && ! tty )); then
     __clau_intro
-    print "\nPersonas"
-    if (( ${#rows} )); then printf '  %s\n' ${rows%%$'\t'*}; else print "  (none yet)"; fi
+    local rl gl
+    rl="$(__clau_root_label "$rdir")"; gl="$(__clau_root_label "$pdir")"
+    print -r -- $'\n'"Personas${rl:+ · repo $rl}${gl:+ · global $gl}"
+    local rw rrest
+    if (( ${#rows} )); then
+      for rw in $rows; do
+        rrest="${rw#*$'\t'}"
+        print -r -- "  ${rw%%$'\t'*}${rrest#*$'\t'}"
+      done
+    else
+      print "  (none yet)"
+    fi
     local b
     print ""
     for b in "$pdir"/**/base(/N) "$rdir"/**/base(/N); do
@@ -568,7 +633,7 @@ clau() {
   if (( ${#picked} == 0 )); then
     (( tty )) || { print -u2 "clau: no terminal to pick from — name a persona: clau <p> [flags…] · clau -h lists them"; return 1 }
     (( ${#rows} )) || { __clau_first_run; return 1 }
-    print $'\e[2mclau — pick the hats for this session; each is a persona directory and the session gets their union · clau -h explains\e[0m'
+    print -r -- $'\e[2m'"clau — pick the hats for this session; each is a persona directory and the session gets their union · $(__clau_origin_note) · clau -h explains"$'\e[0m'
     picked=(${(f)"$(__clau_pick "${rows[@]}")"})
     (( ${#picked} )) || { print "clau: nothing selected"; return 1 }
   fi

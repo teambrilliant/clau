@@ -6,6 +6,7 @@ export type Persona = {
   dir: string;
   group: string;
   color: string;
+  origin: "repo" | "global";
   hasMcp: boolean;
   hasEnv: boolean;
   hasPrompt: boolean;

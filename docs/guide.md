@@ -62,6 +62,7 @@ From `$PWD`, `clau` walks up until it finds a `clau/personas/` or `.claude/perso
 - **Committed, shared.** A hat that belongs to the project. Anyone who clones the repo (and has clau plus the marketplace) gets it. Its `mcp.json` carries `${VAR}` placeholders, never values.
 - **Committed override.** A repo `designer/` wins over your global `designer/` while you are inside that tree.
 - **Gitignored, personal.** Machine-local hats. In repos you don't own, use `.git/info/exclude` so no tracked file changes.
+- **You can see which is which.** Every hat in the picker and in `clau -h` carries a `repo` or `global` column, and both surfaces name the root the repo hats came from — `3 repo (clau/personas) · 2 global`, or `no repo hats` when the project has none of its own. The root shows relative while it is under `$PWD` and absolute when it is not, so an absolute path is the tell that these hats belong to an ancestor directory rather than to this project. `clau --json` carries the per-hat answer as `origin`.
 
 2 rules that bite:
 
@@ -359,7 +360,7 @@ $ git mv plugins/sandbox-skills/skills/polish-ui plugins/ui-skills/skills/polish
 **Raycast.** `clau --json` is the resolved tree as data, and the [Raycast extension](../raycast/) sits on it: pick a folder and hats, resume a past session in a different hat (with or without `--fork-session`), add an MCP server to several hats, store a secret, choose the terminal. Folders come from `zoxide`, VS Code's recent workspaces and `~/.claude.json`. It shells out to the same `clau`, so there is no second source of truth.
 
 ```
-$ clau --json | jq '.personas[] | {path, dir, color, hasMcp}'
+$ clau --json | jq '.personas[] | {path, dir, origin, color, hasMcp}'
 $ cd raycast && npm install && npm run dev      # finds clau via $CLAU_HOME → ~/.zshrc.d → ~/.claude → ~/.config/clau
 ```
 

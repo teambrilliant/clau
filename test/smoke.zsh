@@ -122,6 +122,25 @@ ok "--json lists every persona"   "$o" "acme/dev acme/prod other/prod repoonly"
 o=$(clau --json | jq -r '.personas[]|select(.path=="acme/prod")|"\(.color)|\(.hasMcp)\(.hasEnv)\(.hasPrompt)"')
 ok "--json per-persona shape"     "$o" "48;5;196|truetruetrue"
 
+# ── origin: repo-local vs global, in the picker rows, -h and --json ────
+print "\norigin"
+o=$(__clau_rows | tr -d ' ' | tr '\t' '|')
+ok "rows mark a repo hat"         "$o" "|repoonly|repo"
+ok "rows mark a global hat"       "$o" "|acme/dev|global"
+ok "rows leave headers unmarked"  "$o" "|#acme|"
+o=$(clau -h)
+ok "-h shows the origin column"   "$o" "repoonly  repo"
+ok "-h names both roots"          "$o" "Personas · repo clau/personas · global ~/.claude/personas"
+o=$(clau --json | jq -r '.personas[]|"\(.path)=\(.origin)"' | tr '\n' ' ')
+ok "--json marks a repo hat"      "$o" "repoonly=repo"
+ok "--json marks a global hat"    "$o" "acme/dev=global"
+ok "origin note counts both"      "$(__clau_origin_note)" "1 repo (clau/personas) · 3 global"
+mkdir -p "$T/proj/sub"
+o=$( cd "$T/proj/sub" && __clau_origin_note )
+ok "origin note absolutes an ancestor root" "$o" "1 repo ($T/proj/clau/personas) · 3 global"
+o=$( cd "$T/home" && __clau_origin_note )
+ok "origin note flags no repo"    "$o" "no repo hats · 3 global"
+
 # ── onboarding: no terminal on stdin → model + tree + skill, never a launch ──
 print "\nonboarding"
 o=$(clau </dev/null 2>&1); rc=$?
@@ -199,13 +218,27 @@ ok ".scratch git-excluded"        "$(<"$T/proj/.git/info/exclude")" ".scratch"
 # ── shell hygiene: launching must not clobber caller variables ─────────
 print "\nshell hygiene"
 p=KEEP_P; acc=KEEP_ACC; dir=KEEP_DIR; n=KEEP_N; f=KEEP_F; tty=KEEP_TTY
+d=KEEP_D; w=KEEP_W; org=KEEP_ORG; row=KEEP_ROW; rw=KEEP_RW; rrest=KEEP_RREST; note=KEEP_NOTE
+rlbl=KEEP_RLBL; rl=KEEP_RL; gl=KEEP_GL
 clau acme/prod >/dev/null 2>&1
+clau -h >/dev/null 2>&1
+__clau_origin_note >/dev/null 2>&1
 ok "\$p survives"                 "$p"   "KEEP_P"
 ok "\$acc survives"               "$acc" "KEEP_ACC"
 ok "\$dir survives"               "$dir" "KEEP_DIR"
 ok "\$n survives"                 "$n"   "KEEP_N"
 ok "\$f survives"                 "$f"   "KEEP_F"
 ok "\$tty survives"               "$tty" "KEEP_TTY"
+ok "\$d survives"                 "$d"     "KEEP_D"
+ok "\$w survives"                 "$w"     "KEEP_W"
+ok "\$org survives"               "$org"   "KEEP_ORG"
+ok "\$row survives"               "$row"   "KEEP_ROW"
+ok "\$rw survives"                "$rw"    "KEEP_RW"
+ok "\$rrest survives"             "$rrest" "KEEP_RREST"
+ok "\$note survives"              "$note"  "KEEP_NOTE"
+ok "\$rlbl survives"              "$rlbl"  "KEEP_RLBL"
+ok "\$rl survives"                "$rl"    "KEEP_RL"
+ok "\$gl survives"                "$gl"    "KEEP_GL"
 
 # ── clau-mcp ───────────────────────────────────────────────────────────
 print "\nclau-mcp"
