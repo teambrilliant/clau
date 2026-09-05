@@ -6,9 +6,13 @@ repos — never commit them here.
 ## Source of truth & sync rules
 
 - Docs are markdown: `README.md` (what + install), `docs/guide.md` (the field
-  guide), `SECRETS.md`, `SECURITY.md`. No HTML, no embedded source — the guide
-  links to the files instead. A behaviour change lands in the code, the guide
-  and the skill text; `docs/guide.md` links must resolve (`rg -o '\]\(\.\./[^)]+\)'`).
+  guide), `SECRETS.md`, `SECURITY.md`, `CHANGELOG.md`. No HTML, no embedded
+  source — the guide links to the files instead. A behaviour change lands in
+  the code, the guide and the skill text; `docs/guide.md` links must resolve
+  (`rg -o '\]\(\.\./[^)]+\)'`).
+- There are no tags or releases, so `CHANGELOG.md` heads on dates. Anything a
+  user would notice earns a line under `Unreleased`, and a change to a
+  `clau --json` key says so explicitly.
 - Shell changes get sandbox-tested first: **`./test/smoke.zsh`** (fake `$HOME` +
   stub `claude` on `PATH`, temp persona tree, nothing outside `$TMPDIR`
   touched). It covers `-h` list, `--json` shape, leaf-name shorthand, unknown +
