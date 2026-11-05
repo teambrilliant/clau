@@ -280,7 +280,7 @@ Resolution, per `${NAME}` found in the selected layers' `mcp.json`:
 
 1. Already set in your shell: that value wins, keychain untouched. This is what keeps `op run` and direnv working.
 2. Otherwise `clau:NAME` from the keychain.
-3. Neither: a warning naming the exact fix, the launch continues, that one server fails.
+3. Neither: a warning naming the exact fix, the launch continues, that one server fails. An item that exists but can't be read (keychain locked, approval declined, an SSH session) gets its own warning; [SECRETS.md](../SECRETS.md#over-ssh) has the SSH fix.
 
 Everything resolved is exported inside a subshell around `claude`. Your interactive shell never holds the value. `.env` files in a layer work the same way for what isn't an MCP server; `keychain:NAME` resolves identically, anything else is literal.
 
@@ -302,7 +302,7 @@ How the helper behaves, and why:
 - By default the keychain item's ACL is locked, so macOS asks on every read, including the verification read. Tick "Always Allow", or store with `-q`, when the prompt is only friction.
 - These items never appear in Passwords.app and never sync. `clau-secret list` is the only inventory, which is why the `clau:NAME` convention matters.
 
-Linux: swap the two `security find-generic-password` calls in `clau.zsh` for `secret-tool lookup` or `pass`. Nothing else changes.
+Linux: swap the one `security find-generic-password` call in `__clau_keychain` (`clau.zsh`) for `secret-tool lookup` or `pass`, keeping exit 44 for a missing item. Nothing else changes.
 
 ## 7. Plan in one hat, build in another
 
