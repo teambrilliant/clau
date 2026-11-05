@@ -536,6 +536,25 @@ __clau_skill() {
   print "loads in every hat launched from here · hide it in one with \"skillOverrides\": { \"clau-persona\": \"off\" } in that hat's settings.json"
 }
 
+# prints keychain item clau:$1, or warns on stderr why not; $2 names who needs it.
+# security exits 44 only for a missing item — anything else means it exists but
+# the read was refused: keychain locked (ssh), approval declined, or no GUI for one.
+__clau_keychain() {
+  emulate -L zsh
+  local val rc
+  val=$(security find-generic-password -a "$USER" -s "clau:$1" -w 2>/dev/null); rc=$?
+  if (( rc == 0 )); then
+    print -r -- "$val"
+    return 0
+  fi
+  if (( rc == 44 )); then
+    print -u2 "clau: $2 needs keychain item clau:$1 — run: clau-secret set $1"
+  else
+    print -u2 "clau: $2 needs clau:$1, which exists but could not be read — keychain locked or read not approved"
+    print -u2 "      over ssh: security unlock-keychain, and store it with clau-secret set -q $1 (no approval dialog)"
+  fi
+  return 1
+}
 
 clau() {
   emulate -L zsh
@@ -747,11 +766,7 @@ clau() {
   (( ${#mcp} )) && names=(${(f)"$(cat "${mcp[@]}" | rg -o '\$\{[A-Za-z_][A-Za-z0-9_]*' | sed 's/^\${//' | sort -u)"})
   for v in $names; do
     [[ -n "${(P)v}" ]] && continue
-    if val=$(security find-generic-password -a "$USER" -s "clau:$v" -w 2>/dev/null); then
-      injected[$v]="$val"
-    else
-      print -u2 "clau: $v is unset and no keychain item clau:$v — run: clau-secret set $v"
-    fi
+    val=$(__clau_keychain "$v" "$v (unset in shell)") && injected[$v]="$val"
   done
   val=""
 
@@ -762,10 +777,7 @@ clau() {
       ek="${eline%%=*}"; ev="${eline#*=}"
       if [[ "$ev" == keychain:* ]]; then
         kname="${ev#keychain:}"
-        if ! ev=$(security find-generic-password -a "$USER" -s "clau:$kname" -w 2>/dev/null); then
-          print -u2 "clau: $ek needs keychain item clau:$kname — run: clau-secret set $kname"
-          continue
-        fi
+        ev=$(__clau_keychain "$kname" "$ek") || continue
       fi
       injected[$ek]="$ev"
     done < "$ef"

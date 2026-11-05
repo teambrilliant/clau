@@ -295,6 +295,23 @@ ok "list spans stored secrets"    "$o" "clau:LONG"
 o=$(clau-secret rm LONG 2>&1);    ok "rm reports"        "$o" "removed clau:LONG"
 o=$(clau-secret list);            no "rm persisted"      "$o" "clau:LONG"
 
+# ── launch: a missing item and an unreadable one warn differently ──────
+print "\nkeychain resolution at launch"
+o=$(MY_TOKEN= clau acme/prod 2>&1)
+ok "missing item names the set"   "$o" "MY_TOKEN (unset in shell) needs keychain item clau:MY_TOKEN — run: clau-secret set MY_TOKEN"
+print -r -- "kc-secret" | SECSTUB_APPROVE=1 clau-secret set MY_TOKEN >/dev/null 2>&1
+print 'ENV_TOK=keychain:MY_TOKEN' >> "$P/acme/prod/.env"
+o=$(MY_TOKEN= clau acme/prod 2>&1)
+ok "locked item says it exists"   "$o" "needs clau:MY_TOKEN, which exists but could not be read"
+ok "locked item names the unlock" "$o" "security unlock-keychain"
+no "locked item not called gone"  "$o" "needs keychain item clau:MY_TOKEN"
+ok ".env keychain: same warning"  "$o" "ENV_TOK needs clau:MY_TOKEN, which exists"
+ok "launch continues"             "$o" "ARGS:"
+no "no value injected"            "$o" "TOKEN=kc-secret"
+o=$(MY_TOKEN= SECSTUB_APPROVE=1 clau acme/prod 2>&1)
+ok "approved read injects"        "$o" "TOKEN=kc-secret"
+no "approved read is silent"      "$o" "could not be read"
+
 print "\n$pass passed, $fail failed"
 cd /
 rm -rf "$T"

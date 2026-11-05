@@ -58,7 +58,9 @@ placeholders, then for each name:
 
 1. Already set in the shell → that value is used, keychain untouched.
 2. Otherwise `clau:<NAME>` is read from the keychain.
-3. Neither → warning naming the fix, launch continues, that server fails.
+3. Neither → warning naming the fix, launch continues, that server fails. An
+   item that exists but can't be read (keychain locked, approval declined) gets
+   its own warning — it never claims the item is missing.
 
 Values are exported inside a subshell wrapping `claude`, so the parent shell
 stays clean.
@@ -85,6 +87,20 @@ clau <persona> --version    dry run: warns about unresolved placeholders, then p
 clau <persona>              real launch · /mcp should show the server connected
 print $JIRA_API_TOKEN       empty after the session exits
 ```
+
+## Over SSH
+
+An SSH session on a Mac usually finds the login keychain locked and has no GUI
+for the approval dialog, so reads fail and `clau` warns that the item exists but
+could not be read. On the remote Mac:
+
+```
+security unlock-keychain ~/Library/Keychains/login.keychain-db   # once per ssh session
+clau-secret set -q <NAME>                                        # re-store: no dialog on read
+```
+
+A default `set` item asks for approval on every read, which can't happen over
+SSH, so only `-q` items resolve there.
 
 ## Notes
 

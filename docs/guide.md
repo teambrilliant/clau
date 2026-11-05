@@ -280,7 +280,7 @@ Resolution, per `${NAME}` found in the selected layers' `mcp.json`:
 
 1. Already set in your shell: that value wins, keychain untouched. This is what keeps `op run` and direnv working.
 2. Otherwise `clau:NAME` from the keychain.
-3. Neither: a warning naming the exact fix, the launch continues, that one server fails.
+3. Neither: a warning naming the exact fix, the launch continues, that one server fails. An item that exists but can't be read (keychain locked, approval declined, an SSH session) gets its own warning; [SECRETS.md](../SECRETS.md#over-ssh) has the SSH fix.
 
 Everything resolved is exported inside a subshell around `claude`. Your interactive shell never holds the value. `.env` files in a layer work the same way for what isn't an MCP server; `keychain:NAME` resolves identically, anything else is literal.
 
