@@ -112,6 +112,7 @@ SSH, so only `-q` items resolve there.
 - A secret injected this way is present in the session's environment, so a
   `Bash` tool call inside that session can read it. Denying `Bash(security*)` in
   your `base` persona is a speed bump; the keychain prompt is the real gate.
-- macOS only — `security` is the backing store. On Linux, replace the two
-  `security find-generic-password` calls in `clau.zsh` with `secret-tool lookup`
-  or `pass`.
+- macOS only — `security` is the backing store. On Linux, replace the one
+  `security find-generic-password` call in `__clau_keychain` (`clau.zsh`) with
+  `secret-tool lookup` or `pass`, and keep exit 44 meaning "missing" — any
+  other failure is reported as "exists but could not be read".

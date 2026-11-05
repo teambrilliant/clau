@@ -302,7 +302,7 @@ How the helper behaves, and why:
 - By default the keychain item's ACL is locked, so macOS asks on every read, including the verification read. Tick "Always Allow", or store with `-q`, when the prompt is only friction.
 - These items never appear in Passwords.app and never sync. `clau-secret list` is the only inventory, which is why the `clau:NAME` convention matters.
 
-Linux: swap the two `security find-generic-password` calls in `clau.zsh` for `secret-tool lookup` or `pass`. Nothing else changes.
+Linux: swap the one `security find-generic-password` call in `__clau_keychain` (`clau.zsh`) for `secret-tool lookup` or `pass`, keeping exit 44 for a missing item. Nothing else changes.
 
 ## 7. Plan in one hat, build in another
 
