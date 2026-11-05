@@ -4,6 +4,7 @@ No releases or tags yet, so the headings are dates rather than versions. `clau -
 
 ## Unreleased
 
+- Over SSH with a terminal, a refused keychain read makes `clau` run `security unlock-keychain` once (password prompt in the terminal) and retry. Items that still need an approval dialog are named with the `clau-secret set -q` fix.
 - A keychain item that exists but can't be read — locked keychain or no approval dialog, as over SSH — no longer warns "no keychain item"; the warning says it exists and names `security unlock-keychain` and `clau-secret set -q`. `SECRETS.md` gains an "Over SSH" section.
 - Every hat in the picker and in `clau -h` carries a `repo` or `global` column, and both name the root the repo hats resolved from. The root prints relative while it sits under `$PWD` and absolute when it does not, so an absolute path means the hats come from an ancestor directory, not from this project.
 - `clau --json` gains `origin` per persona, `"repo"` or `"global"`. Additive; `raycast/src/lib/personas.ts` types it.

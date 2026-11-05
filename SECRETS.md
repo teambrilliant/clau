@@ -60,7 +60,8 @@ placeholders, then for each name:
 2. Otherwise `clau:<NAME>` is read from the keychain.
 3. Neither → warning naming the fix, launch continues, that server fails. An
    item that exists but can't be read (keychain locked, approval declined) gets
-   its own warning — it never claims the item is missing.
+   its own warning — it never claims the item is missing. Over SSH with a
+   terminal, `clau` first unlocks the keychain and retries — see "Over SSH".
 
 Values are exported inside a subshell wrapping `claude`, so the parent shell
 stays clean.
@@ -91,16 +92,24 @@ print $JIRA_API_TOKEN       empty after the session exits
 ## Over SSH
 
 An SSH session on a Mac usually finds the login keychain locked and has no GUI
-for the approval dialog, so reads fail and `clau` warns that the item exists but
-could not be read. On the remote Mac:
+for the approval dialog, so keychain reads are refused. `clau` handles the lock
+itself: when a read is refused, `$SSH_CONNECTION` is set and stdin is a
+terminal, it prints `keychain is locked (ssh session) — unlocking login
+keychain`, runs `security unlock-keychain` (asks for your login password in the
+terminal) once, and retries what was refused. It normally stays unlocked for
+later launches until the keychain's own auto-lock kicks in.
+
+What unlocking can't fix is an item stored with a default `set`: it asks for
+approval on every read, and that dialog can't show over SSH. `clau` names those
+after the retry; re-store each one from the SSH session:
 
 ```
-security unlock-keychain ~/Library/Keychains/login.keychain-db   # once per ssh session
-clau-secret set -q <NAME>                                        # re-store: no dialog on read
+clau-secret set -q <NAME>    # no dialog on read
 ```
 
-A default `set` item asks for approval on every read, which can't happen over
-SSH, so only `-q` items resolve there.
+A wrong password, or no terminal (an agent's `Bash` tool, Raycast), falls back
+to the warning, and the launch continues without those values. Ctrl-C at the
+password prompt aborts the launch.
 
 ## Notes
 
