@@ -26,6 +26,7 @@ cat > "$T/bin/claude" <<'EOF'
 printf 'ARGS:'; for a in "$@"; do printf ' [%s]' "$a"; done; printf '\n'
 printf 'PERSONA=%s\nBADGES=%s\n' "$CLAU_PERSONA" "$CLAU_BADGES"
 printf 'TOKEN=%s FROM_ENV=%s\n' "$MY_TOKEN" "$FROM_ENV"
+printf 'SSH_TOK=%s ENV_SSH=%s\n' "$SSH_TOK" "$ENV_SSH"
 for a in "$@"; do case "$a" in
   *settings.json) [ -f "$a" ] && { printf 'SETTINGS='; tr -d ' \n' < "$a"; printf '\n'; };;
   *persona.md)    [ -f "$a" ] && { printf 'PROMPT='; tr '\n' '/' < "$a"; printf '\n'; };;
@@ -38,6 +39,9 @@ chmod +x "$T/bin/claude"
 # bug) so the suite can prove clau-secret passes the value itself.
 #   SECSTUB_APPROVE=1   read a locked item, as if you clicked Allow
 #   SECSTUB_TRUNCATE=N  store only the first N chars, as if the write corrupted
+#   $SECSTORE/.kc-locked   the whole keychain is locked (ssh): every -w read exits 36
+#                          until `unlock-keychain` removes it; each unlock is logged
+#   SECSTUB_UNLOCK_FAIL=1  unlock-keychain fails, as if the password was wrong
 mkdir -p "$T/sec"
 cat > "$T/bin/security" <<'EOF'
 #!/bin/sh
@@ -66,10 +70,15 @@ case "$cmd" in
     esac; done
     [ -f "$s/$svc" ] || exit 44
     if [ "$wflag" -eq 1 ]; then
+      [ -f "$s/.kc-locked" ] && exit 36
       [ -f "$s/$svc.locked" ] && [ "$SECSTUB_APPROVE" != 1 ] && exit 128
       cat "$s/$svc"; echo
     fi
     exit 0 ;;
+  unlock-keychain)
+    echo unlock >> "$s/.unlocks"
+    [ "$SECSTUB_UNLOCK_FAIL" = 1 ] && exit 51
+    rm -f "$s/.kc-locked"; exit 0 ;;
   delete-generic-password)
     while [ $# -gt 0 ]; do case "$1" in -s) svc="$2"; shift 2 ;; *) shift ;; esac; done
     [ -f "$s/$svc" ] || exit 44
@@ -311,6 +320,45 @@ no "no value injected"            "$o" "TOKEN=kc-secret"
 o=$(MY_TOKEN= SECSTUB_APPROVE=1 clau acme/prod 2>&1)
 ok "approved read injects"        "$o" "TOKEN=kc-secret"
 no "approved read is silent"      "$o" "could not be read"
+
+# ── over ssh with a terminal: unlock the keychain once, retry what was refused ──
+# `script` gives the launch a pty, so `-t 0` holds even in CI with no terminal.
+print "\nssh unlock at launch"
+inpty(){ script -q /dev/null zsh -fc "source ${(q)R}/clau.zsh; $*" </dev/null 2>&1 }
+print -r -- "ssh-secret" | clau-secret set -q SSH_TOK >/dev/null 2>&1
+print '{"mcpServers":{"s":{"command":"y","env":{"T":"${SSH_TOK}"}}}}' > "$P/other/prod/mcp.json"
+print 'ENV_SSH=keychain:SSH_TOK' > "$P/other/prod/.env"
+: > "$T/sec/.kc-locked"; rm -f "$T/sec/.unlocks"
+o=$(inpty "SSH_CONNECTION='1 2 3 4' clau other/prod")
+ok "locked over ssh: unlocks"     "$o" "keychain is locked (ssh session) — unlocking login keychain"
+ok "retry injects mcp secret"     "$o" "SSH_TOK=ssh-secret"
+ok "retry injects .env secret"    "$o" "ENV_SSH=ssh-secret"
+no "no warning once unlocked"     "$o" "could not be read"
+is "one unlock for two reads"     "$([[ $(wc -l < "$T/sec/.unlocks") -eq 1 ]] && print y)"
+
+: > "$T/sec/.kc-locked"
+o=$(inpty "MY_TOKEN= SSH_CONNECTION='1 2 3 4' clau acme/prod")
+ok "approval item after unlock"   "$o" "MY_TOKEN (unset in shell) needs clau:MY_TOKEN, still unreadable after unlock"
+ok "names the -q re-store"        "$o" "re-store it here with: clau-secret set -q MY_TOKEN"
+
+: > "$T/sec/.kc-locked"
+o=$(inpty "SECSTUB_UNLOCK_FAIL=1 SSH_CONNECTION='1 2 3 4' clau other/prod")
+ok "failed unlock: plain warning" "$o" "SSH_TOK (unset in shell) needs clau:SSH_TOK, which exists but could not be read"
+ok "failed unlock still launches" "$o" "ARGS:"
+
+rm -f "$T/sec/.unlocks"
+o=$(SSH_CONNECTION='1 2 3 4' clau other/prod 2>&1)
+ok "no terminal: plain warning"   "$o" "which exists but could not be read"
+o=$(inpty "clau other/prod")
+ok "not ssh: plain warning"       "$o" "which exists but could not be read"
+is "no unlock without ssh + tty"  "$([[ ! -e "$T/sec/.unlocks" ]] && print y)"
+
+mkdir -p "$P/other/base"
+print 'OVR=keychain:SSH_TOK' > "$P/other/base/.env"
+print 'OVR=literal' >> "$P/other/prod/.env"
+o=$(clau other/prod 2>&1)
+no "leaf literal drops refusal"   "$o" "OVR needs"
+rm -f "$T/sec/.kc-locked"
 
 print "\n$pass passed, $fail failed"
 cd /

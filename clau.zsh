@@ -536,9 +536,10 @@ __clau_skill() {
   print "loads in every hat launched from here · hide it in one with \"skillOverrides\": { \"clau-persona\": \"off\" } in that hat's settings.json"
 }
 
-# prints keychain item clau:$1, or warns on stderr why not; $2 names who needs it.
-# security exits 44 only for a missing item — anything else means it exists but
-# the read was refused: keychain locked (ssh), approval declined, or no GUI for one.
+# prints keychain item clau:$1 · exit 1 = missing (warned, $2 names who needs it)
+# · exit 2 = exists but the read was refused (silent — the caller may unlock and
+# retry). security exits 44 only for a missing item; anything else is a refusal:
+# keychain locked (ssh), approval declined, or no GUI to ask on.
 __clau_keychain() {
   emulate -L zsh
   local val rc
@@ -549,11 +550,9 @@ __clau_keychain() {
   fi
   if (( rc == 44 )); then
     print -u2 "clau: $2 needs keychain item clau:$1 — run: clau-secret set $1"
-  else
-    print -u2 "clau: $2 needs clau:$1, which exists but could not be read — keychain locked or read not approved"
-    print -u2 "      over ssh: security unlock-keychain, and store it with clau-secret set -q $1 (no approval dialog)"
+    return 1
   fi
-  return 1
+  return 2
 }
 
 clau() {
@@ -761,12 +760,14 @@ clau() {
   fi
 
   local -a names
-  typeset -A injected
-  local v val
+  typeset -A injected refused_name refused_label
+  local v val rc
   (( ${#mcp} )) && names=(${(f)"$(cat "${mcp[@]}" | rg -o '\$\{[A-Za-z_][A-Za-z0-9_]*' | sed 's/^\${//' | sort -u)"})
   for v in $names; do
     [[ -n "${(P)v}" ]] && continue
-    val=$(__clau_keychain "$v" "$v (unset in shell)") && injected[$v]="$val"
+    val=$(__clau_keychain "$v" "$v (unset in shell)"); rc=$?
+    if (( rc == 0 )); then injected[$v]="$val"
+    elif (( rc == 2 )); then refused_name[$v]="$v"; refused_label[$v]="$v (unset in shell)"; fi
   done
   val=""
 
@@ -777,14 +778,35 @@ clau() {
       ek="${eline%%=*}"; ev="${eline#*=}"
       if [[ "$ev" == keychain:* ]]; then
         kname="${ev#keychain:}"
-        ev=$(__clau_keychain "$kname" "$ek") || continue
+        ev=$(__clau_keychain "$kname" "$ek"); rc=$?
+        if (( rc == 2 )); then refused_name[$ek]="$kname"; refused_label[$ek]="$ek"; fi
+        (( rc == 0 )) || continue
       fi
       injected[$ek]="$ev"
+      unset "refused_name[$ek]" "refused_label[$ek]"
     done < "$ef"
   done
   ev=""
 
-  local rc
+  # refused reads: over ssh with a terminal, unlock the keychain once and retry
+  local unlocked=0
+  if (( ${#refused_name} )) && [[ -n "$SSH_CONNECTION" && -t 0 ]]; then
+    print -u2 "clau: keychain is locked (ssh session) — unlocking login keychain"
+    security unlock-keychain && unlocked=1
+  fi
+  for v in ${(k)refused_name}; do
+    kname="${refused_name[$v]}"
+    if (( unlocked )); then
+      val=$(__clau_keychain "$kname" "${refused_label[$v]}"); rc=$?
+      if (( rc == 0 )); then injected[$v]="$val"; continue; fi
+      (( rc == 2 )) && print -u2 "clau: ${refused_label[$v]} needs clau:$kname, still unreadable after unlock — it asks for approval on every read, which can't show over ssh; re-store it here with: clau-secret set -q $kname"
+    else
+      print -u2 "clau: ${refused_label[$v]} needs clau:$kname, which exists but could not be read — keychain locked or read not approved"
+      print -u2 "      over ssh: security unlock-keychain, and store it with clau-secret set -q $kname (no approval dialog)"
+    fi
+  done
+  val=""
+
   (
     for v in ${(k)injected}; do export "$v=${injected[$v]}"; done
     export CLAU_PERSONA="${(j:+:)picked}"
